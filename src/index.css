@@ -1,0 +1,103 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --primary: #ffcc00;
+  --primary-dark: #ffd633;
+  --secondary: #4d4d4d;
+  --secondary-dark: #666666;
+  --danger: #ff3333;
+  --warning: #ffcc00;
+  --success: #00cc66;
+  --dark: #1a1a1a;
+  --light: #ffffff;
+  --bg-primary: #1a1a1a;
+  --bg-secondary: #222222;
+  --bg-elevated: #333333;
+  --text-primary: #ffffff;
+  --text-secondary: #999999;
+  --border-color: #333333;
+}
+
+body {
+  font-family: 'Inter', sans-serif;
+  @apply bg-[#1a1a1a] text-gray-100;
+}
+
+@layer components {
+  .btn {
+    @apply px-4 py-2 rounded-md font-medium transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-[#1a1a1a];
+  }
+  
+  .btn-primary {
+    @apply bg-[#ffcc00] text-black hover:bg-[#ffd633] focus:ring-[#ffcc00];
+  }
+  
+  .btn-secondary {
+    @apply bg-[#333333] text-gray-100 hover:bg-[#4d4d4d] focus:ring-[#4d4d4d];
+  }
+  
+  .btn-outline {
+    @apply border border-[#333333] bg-transparent text-gray-300 hover:border-[#ffcc00] hover:text-[#ffcc00] focus:ring-[#ffcc00];
+  }
+  
+  .btn-danger {
+    @apply bg-red-600 text-white hover:bg-red-700 focus:ring-red-500;
+  }
+  
+  .card {
+    @apply bg-[#222222] rounded-lg border border-[#333333] overflow-hidden;
+  }
+  
+  .form-input {
+    @apply w-full px-3 py-2 bg-[#333333] border border-[#444444] rounded-md text-gray-100 placeholder-gray-500
+    focus:outline-none focus:ring-2 focus:ring-[#ffcc00] focus:border-[#ffcc00];
+  }
+  
+  .form-label {
+    @apply block text-sm font-medium text-gray-300 mb-1;
+  }
+  
+  .form-group {
+    @apply mb-4;
+  }
+  
+  .badge {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
+  }
+  
+  .badge-blue {
+    @apply bg-[#333333] text-[#ffcc00];
+  }
+  
+  .badge-green {
+    @apply bg-[#1a472a] text-green-300;
+  }
+  
+  .badge-red {
+    @apply bg-[#4c1d1d] text-red-300;
+  }
+  
+  .badge-yellow {
+    @apply bg-[#3d3000] text-[#ffcc00];
+  }
+  
+  .dark-card {
+    @apply bg-[#222222] border border-[#333333] rounded-lg p-4;
+  }
+  
+  .dark-input {
+    @apply bg-[#333333] border border-[#444444] text-gray-100 placeholder-gray-500
+    focus:ring-[#ffcc00] focus:border-[#ffcc00];
+  }
+  
+  .dark-dropdown {
+    @apply bg-[#222222] border border-[#333333] text-gray-100 
+    divide-[#333333] rounded-md shadow-lg;
+  }
+  
+  .dark-dropdown-item {
+    @apply px-4 py-2 text-gray-300 hover:bg-[#333333] hover:text-[#ffcc00];
+  }
+}
