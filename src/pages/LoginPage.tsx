@@ -25,6 +25,8 @@ const LoginPage: React.FC = () => {
     try {
       const result = await authService.login(email, password);
       console.log('Login successful', result);
+      if (result.access) localStorage.setItem('token', result.access);
+      if (result.refresh) localStorage.setItem('refresh', result.refresh);
       navigate('/dashboard');
     } catch (err: any) {
       console.error('Login error:', err);

@@ -15,6 +15,9 @@ const RegisterPage: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [step, setStep] = useState<'register' | 'verify'>('register');
+  const [code, setCode] = useState('');
+  const [emailForVerify, setEmailForVerify] = useState('');
   const navigate = useNavigate();
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -45,19 +48,34 @@ const RegisterPage: React.FC = () => {
     setError(null);
     
     try {
-      const result = await authService.register({
+      await authService.register({
         username: formData.username,
         email: formData.email,
         password: formData.password,
         first_name: formData.first_name,
         last_name: formData.last_name
       });
-      
-      console.log('Registration successful', result);
-      navigate('/login');
+      // После успешной регистрации отправляем код на email
+      await authService.sendEmailCode(formData.email, 'register');
+      setEmailForVerify(formData.email);
+      setStep('verify');
     } catch (err: any) {
       console.error('Registration error:', err);
       setError(err.message || 'Ошибка при регистрации. Пожалуйста, попробуйте еще раз.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleVerify = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
+    try {
+      await authService.verifyEmailCode(emailForVerify, code, 'register');
+      navigate('/login');
+    } catch (err: any) {
+      setError(err.message || 'Неверный или просроченный код.');
     } finally {
       setLoading(false);
     }
@@ -95,13 +113,17 @@ const RegisterPage: React.FC = () => {
         </div>
       </div>
       
-      {/* Правая панель с формой регистрации */}
+      {/* Правая панель с формой регистрации или подтверждения кода */}
       <div className="flex-1 flex items-center justify-center p-8 md:p-12">
         <div className="w-full max-w-md">
           <div className="text-center mb-10">
             <Link to="/" className="text-3xl font-bold text-[#ffcc00]">Cybersecurity</Link>
-            <h1 className="mt-6 text-3xl font-bold text-gray-900 dark:text-white">Создать аккаунт</h1>
-            <p className="mt-2 text-gray-600 dark:text-gray-400">Заполните форму для регистрации</p>
+            <h1 className="mt-6 text-3xl font-bold text-gray-900 dark:text-white">
+              {step === 'register' ? 'Создать аккаунт' : 'Подтвердите email'}
+            </h1>
+            <p className="mt-2 text-gray-600 dark:text-gray-400">
+              {step === 'register' ? 'Заполните форму для регистрации' : `Введите код, отправленный на ${emailForVerify}`}
+            </p>
           </div>
           
           {error && (
@@ -110,140 +132,187 @@ const RegisterPage: React.FC = () => {
             </div>
           )}
           
-          <form onSubmit={handleSubmit}>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-              <div>
-                <label htmlFor="first_name" className="block mb-2 text-sm font-medium text-gray-900 dark:text-gray-300">
-                  Имя
+          {step === 'register' ? (
+            <form onSubmit={handleSubmit}>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                <div>
+                  <label htmlFor="first_name" className="block mb-2 text-sm font-medium text-gray-900 dark:text-gray-300">
+                    Имя
+                  </label>
+                  <input
+                    type="text"
+                    id="first_name"
+                    name="first_name"
+                    value={formData.first_name}
+                    onChange={handleChange}
+                    className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:border-[#ffcc00] focus:ring-2 focus:ring-[#ffcc00] focus:outline-none transition-colors"
+                    placeholder="Иван"
+                    required
+                  />
+                </div>
+                
+                <div>
+                  <label htmlFor="last_name" className="block mb-2 text-sm font-medium text-gray-900 dark:text-gray-300">
+                    Фамилия
+                  </label>
+                  <input
+                    type="text"
+                    id="last_name"
+                    name="last_name"
+                    value={formData.last_name}
+                    onChange={handleChange}
+                    className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:border-[#ffcc00] focus:ring-2 focus:ring-[#ffcc00] focus:outline-none transition-colors"
+                    placeholder="Петров"
+                    required
+                  />
+                </div>
+              </div>
+              
+              <div className="mb-6">
+                <label htmlFor="username" className="block mb-2 text-sm font-medium text-gray-900 dark:text-gray-300">
+                  Имя пользователя
                 </label>
                 <input
                   type="text"
-                  id="first_name"
-                  name="first_name"
-                  value={formData.first_name}
+                  id="username"
+                  name="username"
+                  value={formData.username}
                   onChange={handleChange}
                   className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:border-[#ffcc00] focus:ring-2 focus:ring-[#ffcc00] focus:outline-none transition-colors"
-                  placeholder="Иван"
+                  placeholder="username"
                   required
                 />
               </div>
               
-              <div>
-                <label htmlFor="last_name" className="block mb-2 text-sm font-medium text-gray-900 dark:text-gray-300">
-                  Фамилия
+              <div className="mb-6">
+                <label htmlFor="email" className="block mb-2 text-sm font-medium text-gray-900 dark:text-gray-300">
+                  Email
+                </label>
+                <input
+                  type="email"
+                  id="email"
+                  name="email"
+                  value={formData.email}
+                  onChange={handleChange}
+                  className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:border-[#ffcc00] focus:ring-2 focus:ring-[#ffcc00] focus:outline-none transition-colors"
+                  placeholder="your@email.com"
+                  required
+                />
+              </div>
+              
+              <div className="mb-6">
+                <label htmlFor="password" className="block mb-2 text-sm font-medium text-gray-900 dark:text-gray-300">
+                  Пароль
+                </label>
+                <div className="relative">
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    id="password"
+                    name="password"
+                    value={formData.password}
+                    onChange={handleChange}
+                    className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:border-[#ffcc00] focus:ring-2 focus:ring-[#ffcc00] focus:outline-none transition-colors"
+                    placeholder="••••••••"
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-600 dark:text-gray-400"
+                  >
+                    {showPassword ? (
+                      <EyeOff className="h-5 w-5" />
+                    ) : (
+                      <Eye className="h-5 w-5" />
+                    )}
+                  </button>
+                </div>
+                <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                  Минимум 8 символов
+                </p>
+              </div>
+              
+              <div className="mb-6">
+                <label htmlFor="confirmPassword" className="block mb-2 text-sm font-medium text-gray-900 dark:text-gray-300">
+                  Подтвердите пароль
+                </label>
+                <div className="relative">
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    id="confirmPassword"
+                    name="confirmPassword"
+                    value={formData.confirmPassword}
+                    onChange={handleChange}
+                    className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:border-[#ffcc00] focus:ring-2 focus:ring-[#ffcc00] focus:outline-none transition-colors"
+                    placeholder="••••••••"
+                    required
+                  />
+                </div>
+              </div>
+              
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full bg-[#ffcc00] hover:bg-[#e6b800] text-black font-medium rounded-lg text-sm px-5 py-3 text-center transition-colors focus:ring-4 focus:ring-[#ffcc00]/50 disabled:opacity-70 disabled:cursor-not-allowed"
+              >
+                {loading ? 'Регистрация...' : 'Зарегистрироваться'}
+              </button>
+            </form>
+          ) : (
+            <form onSubmit={handleVerify}>
+              <div className="mb-6">
+                <label htmlFor="code" className="block mb-2 text-sm font-medium text-gray-900 dark:text-gray-300">
+                  Код подтверждения
                 </label>
                 <input
                   type="text"
-                  id="last_name"
-                  name="last_name"
-                  value={formData.last_name}
-                  onChange={handleChange}
+                  id="code"
+                  name="code"
+                  value={code}
+                  onChange={e => setCode(e.target.value)}
                   className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:border-[#ffcc00] focus:ring-2 focus:ring-[#ffcc00] focus:outline-none transition-colors"
-                  placeholder="Петров"
+                  placeholder="Введите код из письма"
                   required
                 />
               </div>
-            </div>
-            
-            <div className="mb-6">
-              <label htmlFor="username" className="block mb-2 text-sm font-medium text-gray-900 dark:text-gray-300">
-                Имя пользователя
-              </label>
-              <input
-                type="text"
-                id="username"
-                name="username"
-                value={formData.username}
-                onChange={handleChange}
-                className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:border-[#ffcc00] focus:ring-2 focus:ring-[#ffcc00] focus:outline-none transition-colors"
-                placeholder="username"
-                required
-              />
-            </div>
-            
-            <div className="mb-6">
-              <label htmlFor="email" className="block mb-2 text-sm font-medium text-gray-900 dark:text-gray-300">
-                Email
-              </label>
-              <input
-                type="email"
-                id="email"
-                name="email"
-                value={formData.email}
-                onChange={handleChange}
-                className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:border-[#ffcc00] focus:ring-2 focus:ring-[#ffcc00] focus:outline-none transition-colors"
-                placeholder="your@email.com"
-                required
-              />
-            </div>
-            
-            <div className="mb-6">
-              <label htmlFor="password" className="block mb-2 text-sm font-medium text-gray-900 dark:text-gray-300">
-                Пароль
-              </label>
-              <div className="relative">
-                <input
-                  type={showPassword ? "text" : "password"}
-                  id="password"
-                  name="password"
-                  value={formData.password}
-                  onChange={handleChange}
-                  className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:border-[#ffcc00] focus:ring-2 focus:ring-[#ffcc00] focus:outline-none transition-colors"
-                  placeholder="••••••••"
-                  required
-                />
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full bg-[#ffcc00] hover:bg-[#e6b800] text-black font-medium rounded-lg text-sm px-5 py-3 text-center transition-colors focus:ring-4 focus:ring-[#ffcc00]/50 disabled:opacity-70 disabled:cursor-not-allowed"
+              >
+                {loading ? 'Проверка...' : 'Подтвердить'}
+              </button>
+              <div className="mt-4 text-center">
                 <button
                   type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-600 dark:text-gray-400"
+                  className="text-sm text-[#ffcc00] hover:underline"
+                  onClick={async () => {
+                    setLoading(true);
+                    setError(null);
+                    try {
+                      await authService.sendEmailCode(emailForVerify, 'register');
+                    } catch (err: any) {
+                      setError('Ошибка при повторной отправке кода.');
+                    } finally {
+                      setLoading(false);
+                    }
+                  }}
                 >
-                  {showPassword ? (
-                    <EyeOff className="h-5 w-5" />
-                  ) : (
-                    <Eye className="h-5 w-5" />
-                  )}
+                  Отправить код повторно
                 </button>
               </div>
-              <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                Минимум 8 символов
+            </form>
+          )}
+          {step === 'register' && (
+            <div className="mt-8 text-center">
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                Уже есть аккаунт?{' '}
+                <Link to="/login" className="font-medium text-[#ffcc00] hover:underline">
+                  Войти
+                </Link>
               </p>
             </div>
-            
-            <div className="mb-6">
-              <label htmlFor="confirmPassword" className="block mb-2 text-sm font-medium text-gray-900 dark:text-gray-300">
-                Подтвердите пароль
-              </label>
-              <div className="relative">
-                <input
-                  type={showPassword ? "text" : "password"}
-                  id="confirmPassword"
-                  name="confirmPassword"
-                  value={formData.confirmPassword}
-                  onChange={handleChange}
-                  className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:border-[#ffcc00] focus:ring-2 focus:ring-[#ffcc00] focus:outline-none transition-colors"
-                  placeholder="••••••••"
-                  required
-                />
-              </div>
-            </div>
-            
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full bg-[#ffcc00] hover:bg-[#e6b800] text-black font-medium rounded-lg text-sm px-5 py-3 text-center transition-colors focus:ring-4 focus:ring-[#ffcc00]/50 disabled:opacity-70 disabled:cursor-not-allowed"
-            >
-              {loading ? 'Регистрация...' : 'Зарегистрироваться'}
-            </button>
-          </form>
-          
-          <div className="mt-8 text-center">
-            <p className="text-sm text-gray-600 dark:text-gray-400">
-              Уже есть аккаунт?{' '}
-              <Link to="/login" className="font-medium text-[#ffcc00] hover:underline">
-                Войти
-              </Link>
-            </p>
-          </div>
+          )}
         </div>
       </div>
     </div>

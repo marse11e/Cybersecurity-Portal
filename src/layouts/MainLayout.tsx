@@ -1,28 +1,16 @@
 import React, { useState } from 'react';
 import { Outlet, Link, useLocation } from 'react-router-dom';
 import { Shield, Menu, X, User, LogIn, LogOut, ChevronDown } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 
 const MainLayout: React.FC = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const location = useLocation();
-  
-  // Mock authentication state - in a real app, this would come from your auth context
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const { isAuthenticated, user, logout } = useAuth();
   
   const toggleMenu = () => setIsMenuOpen(!isMenuOpen);
   const toggleUserMenu = () => setIsUserMenuOpen(!isUserMenuOpen);
-  
-  const handleLogout = () => {
-    setIsAuthenticated(false);
-    setIsUserMenuOpen(false);
-    // In a real app, you would call your logout function here
-  };
-  
-  // For demo purposes only - toggle auth state
-  const toggleAuth = () => {
-    setIsAuthenticated(!isAuthenticated);
-  };
 
   return (
     <div className="flex flex-col min-h-screen bg-[#1a1a1a] text-gray-100">
@@ -43,9 +31,6 @@ const MainLayout: React.FC = () => {
               <NavLink to="/articles" active={location.pathname.startsWith('/articles')}>Статьи</NavLink>
               <NavLink to="/tests" active={location.pathname.startsWith('/tests')}>Тесты</NavLink>
               <NavLink to="/forum" active={location.pathname.startsWith('/forum')}>Форум</NavLink>
-              {isAuthenticated && (
-                <NavLink to="/admin" active={location.pathname.startsWith('/admin')}>Админ</NavLink>
-              )}
             </nav>
             
             {/* Действия пользователя */}
@@ -59,7 +44,7 @@ const MainLayout: React.FC = () => {
                     <div className="w-8 h-8 rounded-full bg-[#333333] flex items-center justify-center">
                       <User className="h-5 w-5 text-[#ffcc00]" />
                     </div>
-                    <span>Акбота</span>
+                    <span>{user?.username || 'Пользователь'}</span>
                     <ChevronDown className="h-4 w-4" />
                   </button>
                   
@@ -81,17 +66,10 @@ const MainLayout: React.FC = () => {
                         Настройки
                       </Link>
                       <button 
-                        onClick={handleLogout}
+                        onClick={logout}
                         className="block w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-[#333333] hover:text-[#ffcc00]"
                       >
                         Выйти
-                      </button>
-                      {/* Для демонстрации */}
-                      <button 
-                        onClick={toggleAuth}
-                        className="block w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-[#333333] hover:text-[#ffcc00]"
-                      >
-                        (Демо: Переключить авторизацию)
                       </button>
                     </div>
                   )}
@@ -151,7 +129,7 @@ const MainLayout: React.FC = () => {
                     </Link>
                     <button 
                       onClick={() => {
-                        handleLogout();
+                        logout();
                         setIsMenuOpen(false);
                       }}
                       className="flex items-center space-x-2 text-gray-300"

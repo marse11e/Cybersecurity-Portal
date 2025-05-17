@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { 
   Clock, 
@@ -19,318 +19,45 @@ import {
   Globe,
   AlertTriangle
 } from 'lucide-react';
-
-// Mock course data
-const courseData = {
-  id: 1,
-  title: "Основы кибербезопасности",
-  description: "Комплексный курс по основам информационной безопасности для начинающих специалистов.",
-  longDescription: `
-    <p>Этот курс предназначен для тех, кто хочет начать карьеру в области кибербезопасности. Вы изучите основные концепции, инструменты и методологии, необходимые для защиты информационных систем.</p>
-    
-    <p>В ходе курса вы познакомитесь с различными типами угроз, методами защиты и лучшими практиками в области информационной безопасности. Курс сочетает теоретические знания с практическими заданиями.</p>
-  `,
-  image: "https://images.unsplash.com/photo-1563986768609-322da13575f3?ixlib=rb-1.2.1&auto=format&fit=crop&w=1200&q=80",
-  category: "Basic Cybersecurity",
-  level: "Beginner",
-  duration: "6 недель",
-  instructor: {
-    name: "Александр Петров",
-    title: "Эксперт по кибербезопасности",
-    image: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?ixlib=rb-1.2.1&auto=format&fit=crop&w=200&q=80",
-    bio: "15+ лет опыта в области информационной безопасности. Сертифицированный специалист CISSP, CEH."
-  },
-  rating: 4.8,
-  students: 1243,
-  price: "$49.99",
-  featured: true,
-  tags: ["basics", "security", "fundamentals"],
-  lastUpdated: "Май 2024",
-  language: "Русский",
-  certificate: true,
-  prerequisites: "Basic computer knowledge",
-  objectives: [
-    "Understand fundamental cybersecurity concepts and terminology",
-    "Identify common cyber threats and vulnerabilities",
-    "Apply basic risk assessment methodologies",
-    "Implement essential security controls for personal and organizational protection",
-    "Recognize the importance of security policies and procedures",
-    "Develop a basic incident response plan"
-  ],
-  curriculum: [
-    {
-      title: "Introduction to Cybersecurity",
-      lessons: [
-        {
-          title: "What is Cybersecurity?",
-          duration: "15 min",
-          type: "video",
-          completed: true
-        },
-        {
-          title: "The Cybersecurity Landscape",
-          duration: "20 min",
-          type: "video",
-          completed: true
-        },
-        {
-          title: "Key Terminology and Concepts",
-          duration: "25 min",
-          type: "video",
-          completed: false
-        },
-        {
-          title: "Module Quiz",
-          duration: "15 min",
-          type: "quiz",
-          completed: false
-        }
-      ]
-    },
-    {
-      title: "Understanding Cyber Threats",
-      lessons: [
-        {
-          title: "Types of Cyber Threats",
-          duration: "30 min",
-          type: "video",
-          completed: false
-        },
-        {
-          title: "Malware Analysis",
-          duration: "25 min",
-          type: "video",
-          completed: false
-        },
-        {
-          title: "Social Engineering Tactics",
-          duration: "20 min",
-          type: "video",
-          completed: false
-        },
-        {
-          title: "Case Studies: Major Cyber Attacks",
-          duration: "35 min",
-          type: "video",
-          completed: false
-        },
-        {
-          title: "Threat Identification Exercise",
-          duration: "45 min",
-          type: "exercise",
-          completed: false
-        },
-        {
-          title: "Module Quiz",
-          duration: "20 min",
-          type: "quiz",
-          completed: false
-        }
-      ]
-    },
-    {
-      title: "Risk Assessment Fundamentals",
-      lessons: [
-        {
-          title: "Principles of Risk Assessment",
-          duration: "25 min",
-          type: "video",
-          completed: false
-        },
-        {
-          title: "Asset Identification and Valuation",
-          duration: "20 min",
-          type: "video",
-          completed: false
-        },
-        {
-          title: "Threat and Vulnerability Analysis",
-          duration: "30 min",
-          type: "video",
-          completed: false
-        },
-        {
-          title: "Risk Calculation Methodologies",
-          duration: "25 min",
-          type: "video",
-          completed: false
-        },
-        {
-          title: "Practical Risk Assessment",
-          duration: "60 min",
-          type: "exercise",
-          completed: false
-        },
-        {
-          title: "Module Quiz",
-          duration: "20 min",
-          type: "quiz",
-          completed: false
-        }
-      ]
-    },
-    {
-      title: "Basic Protection Strategies",
-      lessons: [
-        {
-          title: "Authentication and Access Control",
-          duration: "25 min",
-          type: "video",
-          completed: false
-        },
-        {
-          title: "Secure Password Practices",
-          duration: "15 min",
-          type: "video",
-          completed: false
-        },
-        {
-          title: "Data Encryption Basics",
-          duration: "30 min",
-          type: "video",
-          completed: false
-        },
-        {
-          title: "Secure Network Configuration",
-          duration: "35 min",
-          type: "video",
-          completed: false
-        },
-        {
-          title: "Security Software Solutions",
-          duration: "25 min",
-          type: "video",
-          completed: false
-        },
-        {
-          title: "Implementing Security Controls",
-          duration: "45 min",
-          type: "exercise",
-          completed: false
-        },
-        {
-          title: "Module Quiz",
-          duration: "20 min",
-          type: "quiz",
-          completed: false
-        }
-      ]
-    },
-    {
-      title: "Final Assessment",
-      lessons: [
-        {
-          title: "Course Review",
-          duration: "30 min",
-          type: "video",
-          completed: false
-        },
-        {
-          title: "Comprehensive Final Exam",
-          duration: "90 min",
-          type: "exam",
-          completed: false
-        },
-        {
-          title: "Practical Security Implementation Project",
-          duration: "120 min",
-          type: "project",
-          completed: false
-        }
-      ]
-    }
-  ],
-  materials: [
-    {
-      title: "Cybersecurity Fundamentals Handbook",
-      type: "pdf",
-      size: "4.2 MB"
-    },
-    {
-      title: "Threat Assessment Worksheet",
-      type: "pdf",
-      size: "1.8 MB"
-    },
-    {
-      title: "Security Controls Checklist",
-      type: "pdf",
-      size: "1.2 MB"
-    },
-    {
-      title: "Risk Assessment Template",
-      type: "excel",
-      size: "3.5 MB"
-    }
-  ],
-  reviews: [
-    {
-      user: {
-        name: "John Smith",
-        image: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?ixlib=rb-1.2.1&auto=format&fit=crop&w=200&q=80"
-      },
-      rating: 5,
-      date: "May 10, 2025",
-      comment: "Excellent course for beginners! The instructor explains complex concepts in a very accessible way. The practical exercises were particularly helpful in reinforcing the theoretical knowledge."
-    },
-    {
-      user: {
-        name: "Emily Davis",
-        image: "https://images.unsplash.com/photo-1580489944761-15a19d654956?ixlib=rb-1.2.1&auto=format&fit=crop&w=200&q=80"
-      },
-      rating: 4,
-      date: "May 5, 2025",
-      comment: "Very informative course that provided a solid foundation in cybersecurity. I would have liked more hands-on exercises, but overall it was a great learning experience."
-    },
-    {
-      user: {
-        name: "Michael Brown",
-        image: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?ixlib=rb-1.2.1&auto=format&fit=crop&w=200&q=80"
-      },
-      rating: 5,
-      date: "April 28, 2025",
-      comment: "As someone with no prior knowledge of cybersecurity, this course was perfect for me. The instructor's explanations were clear, and the course structure made it easy to follow along and build knowledge progressively."
-    }
-  ],
-  topics: [
-    {
-      title: "Введение в кибербезопасность",
-      lessons: 5,
-      duration: "2 часа"
-    },
-    {
-      title: "Основные угрозы и риски",
-      lessons: 8,
-      duration: "3 часа"
-    },
-    {
-      title: "Методы защиты информации",
-      lessons: 6,
-      duration: "2.5 часа"
-    },
-    {
-      title: "Безопасность сетей",
-      lessons: 7,
-      duration: "3 часа"
-    }
-  ],
-  requirements: [
-    "Базовые знания компьютерных систем",
-    "Понимание принципов работы сетей",
-    "Желание учиться и развиваться в сфере безопасности"
-  ],
-  skills: [
-    "Анализ угроз безопасности",
-    "Настройка базовых средств защиты",
-    "Реагирование на инциденты",
-    "Управление рисками безопасности"
-  ]
-};
+import { courseService } from '../api/services/course.service';
+import { Course } from '../api/types';
+import LoadingSpinner from '../components/LoadingSpinner';
+import ErrorDisplay from '../components/ErrorDisplay';
 
 const CourseDetailsPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
+  const [course, setCourse] = useState<Course | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('overview');
   const [expandedSections, setExpandedSections] = useState<number[]>([0]);
-  
+  const [sections, setSections] = useState<any[]>([]);
+  const [materials, setMaterials] = useState<any[]>([]);
+  const [reviews, setReviews] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (!id) return;
+    setLoading(true);
+    setError(null);
+    Promise.all([
+      courseService.getCourse(Number(id)),
+      courseService.getCourseSections(Number(id)),
+      courseService.getCourseMaterials(Number(id)),
+      courseService.getCourseReviews(Number(id)),
+    ])
+      .then(([courseData, sectionsData, materialsData, reviewsData]) => {
+        setCourse(courseData);
+        setSections(sectionsData);
+        setMaterials(materialsData);
+        setReviews(reviewsData);
+      })
+      .catch((err) => {
+        setError('Ошибка загрузки данных курса');
+        setCourse(null);
+      })
+      .finally(() => setLoading(false));
+  }, [id]);
+
   const toggleSection = (index: number) => {
     if (expandedSections.includes(index)) {
       setExpandedSections(expandedSections.filter(i => i !== index));
@@ -338,23 +65,32 @@ const CourseDetailsPage: React.FC = () => {
       setExpandedSections([...expandedSections, index]);
     }
   };
-  
-  const totalLessons = courseData.curriculum.reduce((total, section) => total + section.lessons.length, 0);
-  const totalDuration = courseData.curriculum.reduce((total, section) => {
-    return total + section.lessons.reduce((sectionTotal, lesson) => {
-      const minutes = parseInt(lesson.duration.split(' ')[0]);
+
+  if (loading) {
+    return <LoadingSpinner fullPage text="Загрузка курса..." />;
+  }
+  if (error || !course) {
+    return <ErrorDisplay error={error || 'Курс не найден'} retryFn={() => window.location.reload()} />;
+  }
+
+  // Исправленные вычисления и обращения к полям
+  const objectives = Array.isArray((course as any).objectives) ? (course as any).objectives : [];
+  const prerequisites = (course as any).prerequisites || '';
+  const instructor = course.instructor || { name: '', image: '', id: '' };
+  const totalLessons = sections.reduce((total: any, section: any) => total + (section.lessons?.length || 0), 0);
+  const totalDuration = sections.reduce((total: any, section: any) => {
+    return total + (section.lessons?.reduce((sectionTotal: any, lesson: any) => {
+      const minutes = parseInt(lesson.duration?.split(' ')[0] || '0');
       return sectionTotal + minutes;
-    }, 0);
+    }, 0) || 0);
   }, 0);
-  
   const formatTotalDuration = (minutes: number) => {
     const hours = Math.floor(minutes / 60);
     const mins = minutes % 60;
     return `${hours}ч ${mins}м`;
   };
-  
-  const completedLessons = courseData.curriculum.reduce((total, section) => {
-    return total + section.lessons.filter(lesson => lesson.completed).length;
+  const completedLessons = sections.reduce((total: any, section: any) => {
+    return total + (section.lessons?.filter((lesson: any) => lesson.completed).length || 0);
   }, 0);
   
   const progressPercentage = Math.round((completedLessons / totalLessons) * 100);
@@ -369,20 +105,20 @@ const CourseDetailsPage: React.FC = () => {
               <div className="flex items-center space-x-2 text-sm text-gray-400 mb-2">
                 <Link to="/courses" className="hover:text-[#ffcc00]">Курсы</Link>
                 <span>/</span>
-                <Link to="/courses?category=Basic%20Cybersecurity" className="hover:text-[#ffcc00]">{courseData.category}</Link>
+                <Link to="/courses?category=Basic%20Cybersecurity" className="hover:text-[#ffcc00]">{course.category}</Link>
               </div>
-              <h1 className="text-3xl md:text-4xl font-bold mb-4">{courseData.title}</h1>
-              <p className="text-lg text-gray-300 mb-6">{courseData.description}</p>
+              <h1 className="text-3xl md:text-4xl font-bold mb-4">{course.title}</h1>
+              <p className="text-lg text-gray-300 mb-6">{course.description}</p>
               
               <div className="flex flex-wrap items-center text-sm text-gray-300 mb-6 gap-4">
                 <div className="flex items-center">
                   <Star className="h-5 w-5 text-[#ffcc00] fill-[#ffcc00] mr-1" />
-                  <span className="font-medium">{courseData.rating}</span>
-                  <span className="ml-1">({courseData.students.toLocaleString()} студентов)</span>
+                  <span className="font-medium">{course.rating}</span>
+                  <span className="ml-1">({course.students.toLocaleString()} студентов)</span>
                 </div>
                 <div className="flex items-center">
                   <Clock className="h-5 w-5 mr-1" />
-                  <span>{courseData.duration}</span>
+                  <span>{course.duration}</span>
                 </div>
                 <div className="flex items-center">
                   <BookOpen className="h-5 w-5 mr-1" />
@@ -390,29 +126,29 @@ const CourseDetailsPage: React.FC = () => {
                 </div>
                 <div className="flex items-center">
                   <Globe className="h-5 w-5 mr-1" />
-                  <span>{courseData.language}</span>
+                  <span>{course.language}</span>
                 </div>
                 <div className="flex items-center">
                   <AlertTriangle className="h-5 w-5 mr-1" />
-                  <span>Обновлено {courseData.lastUpdated}</span>
+                  <span>Обновлено {course.last_updated}</span>
                 </div>
               </div>
               
               <div className="flex items-center mb-6">
                 <img 
-                  src={courseData.instructor.image} 
-                  alt={courseData.instructor.name} 
+                  src={instructor.image} 
+                  alt={instructor.name} 
                   className="w-10 h-10 rounded-full mr-3"
                 />
                 <div>
                   <div className="font-medium text-gray-300">Автор курса</div>
-                  <div className="text-[#ffcc00]">{courseData.instructor.name}</div>
+                  <div className="text-[#ffcc00]">{instructor.name}</div>
                 </div>
               </div>
               
               <div className="flex flex-wrap gap-3">
-                <span className="bg-[#333333] text-[#ffcc00] px-3 py-1 rounded-full">{courseData.level}</span>
-                {courseData.certificate && (
+                <span className="bg-[#333333] text-[#ffcc00] px-3 py-1 rounded-full">{course.level}</span>
+                {course.certificate && (
                   <span className="bg-[#333333] text-[#ffcc00] px-3 py-1 rounded-full flex items-center">
                     <Award className="h-3 w-3 mr-1" />
                     Сертификат
@@ -424,7 +160,7 @@ const CourseDetailsPage: React.FC = () => {
             <div className="md:w-1/3">
               <div className="bg-[#222222] rounded-lg border border-[#333333] overflow-hidden text-white">
                 <div className="relative">
-                  <img src={courseData.image} alt={courseData.title} className="w-full h-48 object-cover" />
+                  <img src={course.image} alt={course.title} className="w-full h-48 object-cover" />
                   <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center">
                     <button className="bg-[#ffcc00] hover:bg-[#ffd633] text-black rounded-full p-4 transition-colors duration-200">
                       <Play className="h-8 w-8" />
@@ -434,7 +170,7 @@ const CourseDetailsPage: React.FC = () => {
                 
                 <div className="p-6">
                   <div className="flex justify-between items-center mb-4">
-                    <span className="text-3xl font-bold">{courseData.price}</span>
+                    <span className="text-3xl font-bold">{course.price}</span>
                     <span className="text-gray-400 line-through">$99.99</span>
                   </div>
                   
@@ -453,7 +189,7 @@ const CourseDetailsPage: React.FC = () => {
                     </div>
                     <div className="flex items-center">
                       <FileText className="h-4 w-4 mr-2 text-gray-500" />
-                      <span>{courseData.materials.length} скачиваемых ресурсов</span>
+                      <span>{materials.length} скачиваемых ресурсов</span>
                     </div>
                     <div className="flex items-center">
                       <Globe className="h-4 w-4 mr-2 text-gray-500" />
@@ -580,12 +316,12 @@ const CourseDetailsPage: React.FC = () => {
                   <h2 className="text-2xl font-bold mb-6 text-white">О курсе</h2>
                   <div 
                     className="prose max-w-none mb-8 text-gray-300"
-                    dangerouslySetInnerHTML={{ __html: courseData.longDescription }}
+                    dangerouslySetInnerHTML={{ __html: course.long_description || '' }}
                   ></div>
                   
                   <h3 className="text-xl font-bold mb-4 text-white">Чему вы научитесь</h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-8">
-                    {courseData.objectives.map((objective, index) => (
+                    {objectives.map((objective: any, index: number) => (
                       <div key={index} className="flex items-start">
                         <CheckCircle className="h-5 w-5 text-[#ffcc00] mr-2 flex-shrink-0 mt-0.5" />
                         <span className="text-gray-300">{objective}</span>
@@ -594,7 +330,7 @@ const CourseDetailsPage: React.FC = () => {
                   </div>
                   
                   <h3 className="text-xl font-bold mb-4 text-white">Предварительные требования</h3>
-                  <p className="mb-8 text-gray-300">{courseData.prerequisites}</p>
+                  <p className="mb-8 text-gray-300">{prerequisites}</p>
                   
                   <h3 className="text-xl font-bold mb-4 text-white">Для кого этот курс</h3>
                   <ul className="list-disc pl-5 space-y-2 mb-8 text-gray-300">
@@ -606,7 +342,7 @@ const CourseDetailsPage: React.FC = () => {
                   
                   <h3 className="text-xl font-bold mb-4 text-white">Теги</h3>
                   <div className="flex flex-wrap gap-2">
-                    {courseData.tags.map((tag, index) => (
+                    {course.tags.map((tag, index) => (
                       <span key={index} className="px-3 py-1 bg-[#333333] text-gray-300 rounded-full text-sm">
                         {tag}
                       </span>
@@ -626,7 +362,7 @@ const CourseDetailsPage: React.FC = () => {
                   </div>
                   
                   <div className="space-y-4">
-                    {courseData.curriculum.map((section, sectionIndex) => (
+                    {sections.map((section: any, sectionIndex: number) => (
                       <div key={sectionIndex} className="border border-[#333333] rounded-lg overflow-hidden">
                         <div 
                           className="bg-[#1a1a1a] p-4 flex justify-between items-center cursor-pointer"
@@ -643,21 +379,21 @@ const CourseDetailsPage: React.FC = () => {
                             <div>
                               <h3 className="font-bold text-white">{section.title}</h3>
                               <div className="text-sm text-gray-400">
-                                {section.lessons.length} уроков • 
-                                {formatTotalDuration(section.lessons.reduce((total, lesson) => {
-                                  return total + parseInt(lesson.duration.split(' ')[0]);
-                                }, 0))}
+                                {section.lessons?.length || 0} уроков • 
+                                {formatTotalDuration(section.lessons?.reduce((total: any, l: any) => {
+                                  return total + parseInt(l.duration?.split(' ')[0] || '0');
+                                }, 0) || 0)}
                               </div>
                             </div>
                           </div>
                           <div className="text-sm font-medium text-gray-400">
-                            {section.lessons.filter(l => l.completed).length}/{section.lessons.length} выполнено
+                            {section.lessons?.filter((lesson: any) => lesson.completed).length || 0}/{section.lessons?.length || 0} выполнено
                           </div>
                         </div>
                         
                         {expandedSections.includes(sectionIndex) && (
                           <div className="divide-y divide-[#333333]">
-                            {section.lessons.map((lesson, lessonIndex) => (
+                            {section.lessons?.map((lesson: any, lessonIndex: number) => (
                               <div key={lessonIndex} className="p-4 flex justify-between items-center">
                                 <div className="flex items-center">
                                   {lesson.completed ? (
@@ -698,13 +434,12 @@ const CourseDetailsPage: React.FC = () => {
                   <h2 className="text-2xl font-bold mb-6 text-white">Ваш преподаватель</h2>
                   <div className="flex flex-col md:flex-row items-start gap-6">
                     <img 
-                      src={courseData.instructor.image} 
-                      alt={courseData.instructor.name} 
+                      src={instructor.image} 
+                      alt={instructor.name} 
                       className="w-24 h-24 rounded-full object-cover"
                     />
                     <div>
-                      <h3 className="text-xl font-bold mb-1 text-white">{courseData.instructor.name}</h3>
-                      <p className="text-gray-400 mb-4">{courseData.instructor.title}</p>
+                      <h3 className="text-xl font-bold mb-1 text-white">{instructor.name}</h3>
                       <div className="flex items-center mb-4 space-x-4">
                         <div className="flex items-center">
                           <Star className="h-5 w-5 text-[#ffcc00] fill-[#ffcc00] mr-1" />
@@ -724,7 +459,6 @@ const CourseDetailsPage: React.FC = () => {
                           <span className="text-gray-300">8 Courses</span>
                         </div>
                       </div>
-                      <p className="text-gray-300">{courseData.instructor.bio}</p>
                     </div>
                   </div>
                 </div>
@@ -741,12 +475,12 @@ const CourseDetailsPage: React.FC = () => {
                           {[...Array(5)].map((_, i) => (
                             <Star 
                               key={i} 
-                              className={`h-5 w-5 ${i < Math.floor(courseData.rating) ? 'text-[#ffcc00] fill-[#ffcc00]' : 'text-gray-400'}`} 
+                              className={`h-5 w-5 ${i < Math.floor(course.rating) ? 'text-[#ffcc00] fill-[#ffcc00]' : 'text-gray-400'}`} 
                             />
                           ))}
                         </div>
-                        <span className="font-medium text-lg text-white">{courseData.rating}</span>
-                        <span className="text-gray-400 ml-1">({courseData.students} студентов)</span>
+                        <span className="font-medium text-lg text-white">{course.rating}</span>
+                        <span className="text-gray-400 ml-1">({course.students} студентов)</span>
                       </div>
                     </div>
                     <button className="bg-[#ffcc00] text-black hover:bg-[#ffd633] transition-colors mt-4 md:mt-0 py-2 px-4 rounded-md font-medium">
@@ -782,7 +516,7 @@ const CourseDetailsPage: React.FC = () => {
                   
                   {/* Reviews List */}
                   <div className="space-y-6">
-                    {courseData.reviews.map((review, index) => (
+                    {reviews.map((review, index) => (
                       <div key={index} className="border-b border-[#333333] pb-6 last:border-0">
                         <div className="flex items-start">
                           <img 
@@ -843,7 +577,7 @@ const CourseDetailsPage: React.FC = () => {
                   </p>
                   
                   <div className="space-y-4">
-                    {courseData.materials.map((material, index) => (
+                    {materials.map((material, index) => (
                       <div key={index} className="flex items-center justify-between p-4 border border-[#333333] rounded-lg">
                         <div className="flex items-center">
                           <div className="p-2 bg-[#333333] rounded-lg mr-4">

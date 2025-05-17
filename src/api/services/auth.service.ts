@@ -23,4 +23,16 @@ export const authService = {
   async getCurrentUser(): Promise<User> {
     return apiClient.get<User>('/users/me/');
   },
+
+  async sendEmailCode(email: string, type: 'register' | 'reset'): Promise<any> {
+    return apiClient.post<any>('/auth/send-code/', { email, type });
+  },
+
+  async verifyEmailCode(email: string, code: string, type: 'register' | 'reset'): Promise<any> {
+    return apiClient.post<any>('/auth/verify-code/', { email, code, type });
+  },
+
+  async resetPasswordByCode(email: string, code: string, new_password: string, confirm_password: string): Promise<any> {
+    return apiClient.post<any>('/auth/reset-password/', { email, code, new_password, confirm_password });
+  },
 }; 

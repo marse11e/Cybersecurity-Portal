@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { User, UserAchievement, UserActivity } from '../api/types';
+import { UserAchievement, UserActivity } from '../api/types';
 import { userService } from '../api/services/user.service';
 import { 
   Award, 
@@ -13,24 +13,21 @@ import {
   Shield, 
   Star 
 } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
+import { useNavigate } from 'react-router-dom';
 
 const ProfilePage: React.FC = () => {
-  const [user, setUser] = useState<User | null>(null);
   const [activities, setActivities] = useState<UserActivity[]>([]);
   const [achievements, setAchievements] = useState<UserAchievement[]>([]);
   const [activeTab, setActiveTab] = useState<'profile' | 'activities' | 'achievements' | 'security'>('profile');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  
-  // Состояние для формы редактирования профиля
   const [editMode, setEditMode] = useState(false);
   const [formData, setFormData] = useState({
     first_name: '',
     last_name: '',
     email: ''
   });
-  
-  // Состояние для формы смены пароля
   const [passwordForm, setPasswordForm] = useState({
     old_password: '',
     new_password: '',
@@ -39,63 +36,52 @@ const ProfilePage: React.FC = () => {
   const [passwordError, setPasswordError] = useState<string | null>(null);
   const [passwordSuccess, setPasswordSuccess] = useState<string | null>(null);
 
-  useEffect(() => {
-    const fetchUserData = async () => {
-      setLoading(true);
-      try {
-        // Получаем ID текущего пользователя (в реальном приложении это может приходить из состояния аутентификации)
-        const userData = await userService.getUser(1); // Предполагаем, что у текущего пользователя ID = 1
-        setUser(userData);
-        setFormData({
-          first_name: userData.first_name,
-          last_name: userData.last_name,
-          email: userData.email
-        });
-        
-        // Загружаем активности пользователя
-        const activitiesData = await userService.getUserActivities(userData.id);
-        setActivities(activitiesData);
-        
-        // Загружаем достижения пользователя
-        const achievementsData = await userService.getUserAchievements(userData.id);
-        setAchievements(achievementsData);
-      } catch (err) {
-        console.error('Error fetching user data:', err);
-        setError('Не удалось загрузить данные пользователя');
-      } finally {
-        setLoading(false);
-      }
-    };
+  const { user: authUser, logout, isAuthenticated } = useAuth();
+  const navigate = useNavigate();
 
-    fetchUserData();
-  }, []);
+  useEffect(() => {
+    if (!isAuthenticated || !authUser) {
+      navigate('/login');
+      return;
+    }
+    setLoading(true);
+    setError(null);
+    setFormData({
+      first_name: authUser.first_name,
+      last_name: authUser.last_name,
+      email: authUser.email
+    });
+    userService.getUserActivities(authUser.id)
+      .then(setActivities)
+      .catch(() => setError('Не удалось загрузить активности'));
+    userService.getUserAchievements(authUser.id)
+      .then(setAchievements)
+      .catch(() => setError('Не удалось загрузить достижения'));
+    setLoading(false);
+  }, [authUser, isAuthenticated, navigate]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
+    setFormData(prev => ({ ...prev, [name]: value }));
   };
 
   const handlePasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    setPasswordForm(prev => ({
-      ...prev,
-      [name]: value
-    }));
+    setPasswordForm(prev => ({ ...prev, [name]: value }));
   };
 
   const handleProfileSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user) return;
-    
+    if (!authUser) return;
     try {
       const updatedUser = await userService.updateUserProfile(formData);
-      setUser(updatedUser);
+      setFormData({
+        first_name: updatedUser.first_name,
+        last_name: updatedUser.last_name,
+        email: updatedUser.email
+      });
       setEditMode(false);
     } catch (err) {
-      console.error('Error updating profile:', err);
       setError('Не удалось обновить профиль');
     }
   };
@@ -104,31 +90,22 @@ const ProfilePage: React.FC = () => {
     e.preventDefault();
     setPasswordError(null);
     setPasswordSuccess(null);
-    
     if (passwordForm.new_password !== passwordForm.confirm_password) {
       setPasswordError('Пароли не совпадают');
       return;
     }
-    
     if (passwordForm.new_password.length < 8) {
       setPasswordError('Новый пароль должен содержать минимум 8 символов');
       return;
     }
-    
     try {
       await userService.changePassword({
         old_password: passwordForm.old_password,
         new_password: passwordForm.new_password
       });
-      
       setPasswordSuccess('Пароль успешно изменен');
-      setPasswordForm({
-        old_password: '',
-        new_password: '',
-        confirm_password: ''
-      });
+      setPasswordForm({ old_password: '', new_password: '', confirm_password: '' });
     } catch (err) {
-      console.error('Error changing password:', err);
       setPasswordError('Не удалось изменить пароль. Проверьте текущий пароль и попробуйте снова.');
     }
   };
@@ -141,7 +118,7 @@ const ProfilePage: React.FC = () => {
     );
   }
 
-  if (error || !user) {
+  if (error || !authUser) {
     return (
       <div className="min-h-screen bg-[#1a1a1a] flex items-center justify-center">
         <div className="text-red-500">{error || 'Пользователь не найден'}</div>
@@ -159,16 +136,15 @@ const ProfilePage: React.FC = () => {
               <div className="flex flex-col items-center text-center mb-6">
                 <div className="relative">
                   <img 
-                    src={user.image || "https://via.placeholder.com/100"} 
-                    alt={user.first_name} 
+                    src={authUser.image || "https://via.placeholder.com/100"} 
+                    alt={authUser.first_name} 
                     className="w-24 h-24 rounded-full mb-4"
                   />
                   <span className="absolute bottom-4 right-0 bg-green-500 w-4 h-4 rounded-full border-2 border-[#222222]"></span>
                 </div>
-                <h2 className="text-xl font-bold text-white">{user.first_name} {user.last_name}</h2>
-                <p className="text-gray-400">{user.email}</p>
+                <h2 className="text-xl font-bold text-white">{authUser.first_name} {authUser.last_name}</h2>
+                <p className="text-gray-400">{authUser.email}</p>
               </div>
-              
               <nav>
                 <ul className="space-y-2">
                   <li>
@@ -213,51 +189,48 @@ const ProfilePage: React.FC = () => {
                     >
                       <Shield className="h-5 w-5 mr-3" />
                       Безопасность
-              </button>
+                    </button>
                   </li>
                 </ul>
               </nav>
-              
               <div className="mt-8 pt-6 border-t border-[#333333]">
-                <button className="w-full flex items-center justify-center px-4 py-2 text-red-400 hover:text-red-300 rounded-md hover:bg-[#333333]">
+                <button onClick={logout} className="w-full flex items-center justify-center px-4 py-2 text-red-400 hover:text-red-300 rounded-md hover:bg-[#333333]">
                   <LogOut className="h-5 w-5 mr-2" />
-                Выйти
-              </button>
+                  Выйти
+                </button>
+              </div>
             </div>
-          </div>
-          
             <div className="bg-[#222222] rounded-lg border border-[#333333] p-6">
               <h3 className="text-lg font-bold text-white mb-4">Статистика</h3>
               <div className="space-y-3">
                 <div className="flex justify-between">
                   <span className="text-gray-400">Курсы завершено</span>
-                  <span className="text-white font-medium">{user.courses_completed || 0}</span>
+                  <span className="text-white font-medium">{authUser.courses_completed || 0}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-400">Тесты пройдено</span>
-                  <span className="text-white font-medium">{user.tests_completed || 0}</span>
-            </div>
+                  <span className="text-white font-medium">{authUser.tests_completed || 0}</span>
+                </div>
                 <div className="flex justify-between">
                   <span className="text-gray-400">Статей прочитано</span>
-                  <span className="text-white font-medium">{user.articles_read || 0}</span>
-            </div>
+                  <span className="text-white font-medium">{authUser.articles_read || 0}</span>
+                </div>
                 <div className="flex justify-between">
                   <span className="text-gray-400">Средний балл</span>
-                  <span className="text-white font-medium">{user.average_score || 0}%</span>
-            </div>
+                  <span className="text-white font-medium">{authUser.average_score || 0}%</span>
+                </div>
                 <div className="flex justify-between">
                   <span className="text-gray-400">Дата регистрации</span>
-                  <span className="text-white font-medium">{user.date_joined || 'Н/Д'}</span>
+                  <span className="text-white font-medium">{authUser.date_joined || 'Н/Д'}</span>
+                </div>
+              </div>
             </div>
-          </div>
-        </div>
           </aside>
-          
           {/* Основной контент */}
           <main className="lg:col-span-3">
             {activeTab === 'profile' && (
-            <div className="bg-[#222222] rounded-lg border border-[#333333] p-6">
-              <div className="flex justify-between items-center mb-6">
+              <div className="bg-[#222222] rounded-lg border border-[#333333] p-6">
+                <div className="flex justify-between items-center mb-6">
                   <h1 className="text-xl font-bold text-white">Личная информация</h1>
                   {!editMode && (
                     <button 
@@ -268,8 +241,7 @@ const ProfilePage: React.FC = () => {
                       Редактировать
                     </button>
                   )}
-              </div>
-              
+                </div>
                 {editMode ? (
                   <form onSubmit={handleProfileSubmit}>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
@@ -294,7 +266,6 @@ const ProfilePage: React.FC = () => {
                         />
                       </div>
                     </div>
-                    
                     <div className="mb-6">
                       <label className="block text-sm font-medium text-gray-400 mb-1">Email</label>
                       <input
@@ -305,7 +276,6 @@ const ProfilePage: React.FC = () => {
                         className="w-full px-4 py-2 rounded-md bg-[#333333] border border-[#444444] text-white focus:outline-none focus:ring-2 focus:ring-[#ffcc00]"
                       />
                     </div>
-                    
                     <div className="flex justify-end space-x-4">
                       <button
                         type="button"
@@ -327,30 +297,28 @@ const ProfilePage: React.FC = () => {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <div>
                         <h3 className="text-sm font-medium text-gray-400 mb-1">Имя</h3>
-                        <p className="text-white">{user.first_name}</p>
+                        <p className="text-white">{authUser.first_name}</p>
                       </div>
                       <div>
                         <h3 className="text-sm font-medium text-gray-400 mb-1">Фамилия</h3>
-                        <p className="text-white">{user.last_name}</p>
+                        <p className="text-white">{authUser.last_name}</p>
                       </div>
                       <div>
                         <h3 className="text-sm font-medium text-gray-400 mb-1">Email</h3>
-                        <p className="text-white">{user.email}</p>
+                        <p className="text-white">{authUser.email}</p>
                       </div>
                       <div>
                         <h3 className="text-sm font-medium text-gray-400 mb-1">Имя пользователя</h3>
-                        <p className="text-white">{user.username}</p>
+                        <p className="text-white">{authUser.username}</p>
                       </div>
                     </div>
                   </div>
                 )}
               </div>
             )}
-            
             {activeTab === 'activities' && (
               <div className="bg-[#222222] rounded-lg border border-[#333333] p-6">
                 <h1 className="text-xl font-bold text-white mb-6">Активность</h1>
-                
                 {activities.length > 0 ? (
                   <div className="relative">
                     <div className="absolute left-4 top-0 bottom-0 w-0.5 bg-[#333333]"></div>
@@ -383,13 +351,11 @@ const ProfilePage: React.FC = () => {
                     </p>
                   </div>
                 )}
-                      </div>
-                    )}
-                    
+              </div>
+            )}
             {activeTab === 'achievements' && (
               <div className="bg-[#222222] rounded-lg border border-[#333333] p-6">
                 <h1 className="text-xl font-bold text-white mb-6">Достижения</h1>
-                
                 {achievements.length > 0 ? (
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     {achievements.map((achievement, index) => (
@@ -424,26 +390,21 @@ const ProfilePage: React.FC = () => {
                 )}
               </div>
             )}
-            
             {activeTab === 'security' && (
               <div className="bg-[#222222] rounded-lg border border-[#333333] p-6">
                 <h1 className="text-xl font-bold text-white mb-6">Безопасность</h1>
-                
                 <div className="mb-6">
                   <h2 className="text-lg font-medium text-white mb-4">Изменить пароль</h2>
-                  
                   {passwordError && (
                     <div className="mb-4 p-3 bg-red-900/30 border border-red-700 text-red-400 rounded">
                       {passwordError}
                     </div>
                   )}
-                  
                   {passwordSuccess && (
                     <div className="mb-4 p-3 bg-green-900/30 border border-green-700 text-green-400 rounded">
                       {passwordSuccess}
                     </div>
                   )}
-                  
                   <form onSubmit={handlePasswordSubmit}>
                     <div className="mb-4">
                       <label className="block text-sm font-medium text-gray-400 mb-1">Текущий пароль</label>
@@ -455,8 +416,7 @@ const ProfilePage: React.FC = () => {
                         className="w-full px-4 py-2 rounded-md bg-[#333333] border border-[#444444] text-white focus:outline-none focus:ring-2 focus:ring-[#ffcc00]"
                         required
                       />
-            </div>
-                    
+                    </div>
                     <div className="mb-4">
                       <label className="block text-sm font-medium text-gray-400 mb-1">Новый пароль</label>
                       <input
@@ -468,8 +428,7 @@ const ProfilePage: React.FC = () => {
                         required
                       />
                       <p className="mt-1 text-xs text-gray-500">Минимум 8 символов</p>
-          </div>
-          
+                    </div>
                     <div className="mb-6">
                       <label className="block text-sm font-medium text-gray-400 mb-1">Подтвердите новый пароль</label>
                       <input
@@ -481,7 +440,6 @@ const ProfilePage: React.FC = () => {
                         required
                       />
                     </div>
-                    
                     <div>
                       <button
                         type="submit"
@@ -492,7 +450,6 @@ const ProfilePage: React.FC = () => {
                     </div>
                   </form>
                 </div>
-                
                 <div className="pt-6 border-t border-[#333333]">
                   <h2 className="text-lg font-medium text-white mb-4">Сессии</h2>
                   <div className="bg-[#2a2a2a] rounded-lg p-4">

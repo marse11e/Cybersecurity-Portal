@@ -1,29 +1,80 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Shield, Mail, ArrowLeft, AlertCircle, CheckCircle } from 'lucide-react';
+import { authService } from '../api/services/auth.service';
 
 const ForgotPasswordPage: React.FC = () => {
   const [email, setEmail] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
-  const [success, setSuccess] = useState(false);
+  const [step, setStep] = useState<'email' | 'code' | 'reset' | 'success'>('email');
+  const [code, setCode] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
 
-  const handleSubmit = (e: React.FormEvent) => {
+  // 1. Отправка email для получения кода
+  const handleSendEmail = async (e: React.FormEvent) => {
     e.preventDefault();
-    
     if (!email) {
       setError('Пожалуйста, введите email');
       return;
     }
-    
     setError('');
     setIsLoading(true);
-    
-    setTimeout(() => {
-      console.log('Отправка инструкций по сбросу пароля на:', email);
+    try {
+      await authService.sendEmailCode(email, 'reset');
+      setStep('code');
+    } catch (err: any) {
+      setError(err.message || 'Ошибка при отправке письма.');
+    } finally {
       setIsLoading(false);
-      setSuccess(true);
-    }, 1000);
+    }
+  };
+
+  // 2. Подтверждение кода
+  const handleVerifyCode = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!code) {
+      setError('Введите код из письма');
+      return;
+    }
+    setError('');
+    setIsLoading(true);
+    try {
+      await authService.verifyEmailCode(email, code, 'reset');
+      setStep('reset');
+    } catch (err: any) {
+      setError(err.message || 'Неверный или просроченный код.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // 3. Сброс пароля
+  const handleResetPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newPassword || !confirmPassword) {
+      setError('Заполните оба поля');
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setError('Пароли не совпадают');
+      return;
+    }
+    if (newPassword.length < 8) {
+      setError('Пароль должен содержать не менее 8 символов');
+      return;
+    }
+    setError('');
+    setIsLoading(true);
+    try {
+      await authService.resetPasswordByCode(email, code, newPassword, confirmPassword);
+      setStep('success');
+    } catch (err: any) {
+      setError(err.message || 'Ошибка при сбросе пароля.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -36,7 +87,10 @@ const ForgotPasswordPage: React.FC = () => {
           Восстановление пароля
         </h2>
         <p className="mt-2 text-center text-sm text-gray-400">
-          Введите email, и мы отправим вам инструкции по сбросу пароля
+          {step === 'email' && 'Введите email, и мы отправим вам код для сброса пароля'}
+          {step === 'code' && `Введите код, отправленный на ${email}`}
+          {step === 'reset' && 'Придумайте новый пароль'}
+          {step === 'success' && 'Пароль успешно изменён!'}
         </p>
       </div>
 
@@ -48,27 +102,8 @@ const ForgotPasswordPage: React.FC = () => {
               <span>{error}</span>
             </div>
           )}
-          
-          {success ? (
-            <div className="text-center">
-              <div className="flex justify-center mb-4">
-                <CheckCircle className="h-12 w-12 text-green-500" />
-              </div>
-              <h3 className="text-lg font-medium text-white mb-2">
-                Проверьте вашу почту
-              </h3>
-              <p className="text-gray-400 mb-6">
-                Мы отправили инструкции по сбросу пароля на {email}
-              </p>
-              <Link 
-                to="/login" 
-                className="w-full bg-[#ffcc00] text-black hover:bg-[#ffd633] px-4 py-2 rounded-md font-medium transition-colors inline-block"
-              >
-                Вернуться к входу
-              </Link>
-            </div>
-          ) : (
-            <form className="space-y-6" onSubmit={handleSubmit}>
+          {step === 'email' && (
+            <form className="space-y-6" onSubmit={handleSendEmail}>
               <div>
                 <label htmlFor="email" className="block text-sm font-medium text-gray-300">
                   Email
@@ -87,17 +122,120 @@ const ForgotPasswordPage: React.FC = () => {
                   />
                 </div>
               </div>
-
               <div>
                 <button
                   type="submit"
                   className={`w-full bg-[#ffcc00] text-black hover:bg-[#ffd633] px-4 py-2 rounded-md font-medium transition-colors ${isLoading ? 'opacity-75 cursor-not-allowed' : ''}`}
                   disabled={isLoading}
                 >
-                  {isLoading ? 'Отправка...' : 'Отправить инструкции'}
+                  {isLoading ? 'Отправка...' : 'Отправить код'}
                 </button>
               </div>
             </form>
+          )}
+          {step === 'code' && (
+            <form className="space-y-6" onSubmit={handleVerifyCode}>
+              <div>
+                <label htmlFor="code" className="block text-sm font-medium text-gray-300">
+                  Код из письма
+                </label>
+                <input
+                  id="code"
+                  type="text"
+                  value={code}
+                  onChange={e => setCode(e.target.value)}
+                  className="block w-full bg-[#333333] border border-[#444444] rounded-md text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#ffcc00] focus:border-[#ffcc00]"
+                  placeholder="Введите код"
+                />
+              </div>
+              <div>
+                <button
+                  type="submit"
+                  className={`w-full bg-[#ffcc00] text-black hover:bg-[#ffd633] px-4 py-2 rounded-md font-medium transition-colors ${isLoading ? 'opacity-75 cursor-not-allowed' : ''}`}
+                  disabled={isLoading}
+                >
+                  {isLoading ? 'Проверка...' : 'Подтвердить код'}
+                </button>
+              </div>
+              <div className="text-center mt-2">
+                <button
+                  type="button"
+                  className="text-sm text-[#ffcc00] hover:underline"
+                  onClick={async () => {
+                    setIsLoading(true);
+                    setError('');
+                    try {
+                      await authService.sendEmailCode(email, 'reset');
+                    } catch {
+                      setError('Ошибка при повторной отправке кода.');
+                    } finally {
+                      setIsLoading(false);
+                    }
+                  }}
+                >
+                  Отправить код повторно
+                </button>
+              </div>
+            </form>
+          )}
+          {step === 'reset' && (
+            <form className="space-y-6" onSubmit={handleResetPassword}>
+              <div>
+                <label htmlFor="newPassword" className="block text-sm font-medium text-gray-300">
+                  Новый пароль
+                </label>
+                <input
+                  id="newPassword"
+                  type="password"
+                  value={newPassword}
+                  onChange={e => setNewPassword(e.target.value)}
+                  className="block w-full bg-[#333333] border border-[#444444] rounded-md text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#ffcc00] focus:border-[#ffcc00]"
+                  placeholder="••••••••"
+                />
+                <p className="mt-1 text-xs text-gray-500">Минимум 8 символов</p>
+              </div>
+              <div>
+                <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-300">
+                  Подтвердите новый пароль
+                </label>
+                <input
+                  id="confirmPassword"
+                  type="password"
+                  value={confirmPassword}
+                  onChange={e => setConfirmPassword(e.target.value)}
+                  className="block w-full bg-[#333333] border border-[#444444] rounded-md text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#ffcc00] focus:border-[#ffcc00]"
+                  placeholder="••••••••"
+                />
+              </div>
+              <div>
+                <button
+                  type="submit"
+                  className={`w-full bg-[#ffcc00] text-black hover:bg-[#ffd633] px-4 py-2 rounded-md font-medium transition-colors ${isLoading ? 'opacity-75 cursor-not-allowed' : ''}`}
+                  disabled={isLoading}
+                >
+                  {isLoading ? 'Сброс...' : 'Сбросить пароль'}
+                </button>
+              </div>
+            </form>
+          )}
+          {step === 'success' && (
+            <div className="text-center">
+              <div className="flex justify-center mb-4">
+                <CheckCircle className="h-12 w-12 text-green-500" />
+              </div>
+              <h3 className="text-lg font-medium text-white mb-2">
+                Пароль успешно изменён
+              </h3>
+              <p className="text-gray-400 mb-6">
+                Теперь вы можете войти с новым паролем
+              </p>
+              <Link 
+                to="/login" 
+                className="w-full bg-[#ffcc00] text-black hover:bg-[#ffd633] px-4 py-2 rounded-md font-medium transition-colors inline-block"
+              >
+                Вернуться к входу
+              </Link>
+            </div>
           )}
 
           <div className="mt-6">
