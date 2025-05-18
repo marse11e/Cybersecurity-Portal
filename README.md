@@ -68,7 +68,7 @@ Cybersecurity-Portal/
 
 1. **Клонируйте репозиторий:**
    ```bash
-   git clone <URL-репозитория>
+   git clone git@github.com:marse11e/Cybersecurity-Portal.git
    cd Cybersecurity-Portal
    ```
 2. **Установите зависимости:**
