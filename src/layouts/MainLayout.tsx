@@ -1,16 +1,30 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Outlet, Link, useLocation } from 'react-router-dom';
 import { Shield, Menu, X, User, LogIn, LogOut, ChevronDown } from 'lucide-react';
-import { useAuth } from '../context/AuthContext';
+import { useSelector, useDispatch } from 'react-redux';
+import { RootState } from '../store';
+import { logout, fetchCurrentUser } from '../store/userSlice';
 
 const MainLayout: React.FC = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const location = useLocation();
-  const { isAuthenticated, user, logout } = useAuth();
+  const dispatch = useDispatch();
+  const isAuthenticated = useSelector((state: RootState) => state.user.isAuthenticated);
+  const user = useSelector((state: RootState) => state.user.user);
   
   const toggleMenu = () => setIsMenuOpen(!isMenuOpen);
   const toggleUserMenu = () => setIsUserMenuOpen(!isUserMenuOpen);
+
+  useEffect(() => {
+    if (localStorage.getItem('token')) {
+      dispatch(fetchCurrentUser());
+    }
+  }, [dispatch]);
+
+  const handleLogout = () => {
+    dispatch(logout());
+  };
 
   return (
     <div className="flex flex-col min-h-screen bg-[#1a1a1a] text-gray-100">
@@ -66,7 +80,7 @@ const MainLayout: React.FC = () => {
                         Настройки
                       </Link>
                       <button 
-                        onClick={logout}
+                        onClick={handleLogout}
                         className="block w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-[#333333] hover:text-[#ffcc00]"
                       >
                         Выйти
@@ -128,10 +142,7 @@ const MainLayout: React.FC = () => {
                       <span>Профиль</span>
                     </Link>
                     <button 
-                      onClick={() => {
-                        logout();
-                        setIsMenuOpen(false);
-                      }}
+                      onClick={handleLogout}
                       className="flex items-center space-x-2 text-gray-300"
                     >
                       <LogOut className="h-5 w-5" />

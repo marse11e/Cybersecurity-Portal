@@ -5,9 +5,12 @@ export interface User {
   email: string;
   first_name: string;
   last_name: string;
-  is_staff: boolean;
+  role?: string;
+  bio?: string;
+  avatar?: string | null;
+  image?: string | null;
+  join_date?: string;
   date_joined?: string;
-  image?: string;
   courses_completed?: number;
   tests_completed?: number;
   articles_read?: number;
@@ -25,8 +28,6 @@ export interface Category {
   id: number;
   name: string;
   slug: string;
-  description?: string;
-  subcategories?: Category[];
   count: number;
 }
 
@@ -47,18 +48,22 @@ export interface Achievement {
 
 export interface UserAchievement {
   id: number;
-  title: string;
-  description: string;
-  date?: string;
+  user: User;
+  achievement: Achievement;
+  date_earned?: string;
   unlocked: boolean;
+  date?: string;
 }
 
 export interface UserActivity {
   id: number;
+  user: User;
+  activity_type: 'course' | 'test' | 'article' | 'discussion' | 'achievement';
   title: string;
-  description: string;
   date: string;
-  type: 'course' | 'test' | 'article' | 'achievement';
+  progress?: number;
+  score?: number;
+  description: string;
 }
 
 // Типы для тестов
@@ -67,58 +72,57 @@ export interface Test {
   title: string;
   description: string;
   long_description?: string;
-  category: string;
+  image?: string;
+  category: Category | number | string | null;
   level: string;
-  duration: number;
+  duration: string;
   questions_count: number;
   participants: number;
   rating: number;
   featured: boolean;
-  tags: string[];
+  tags: (Tag | number | string)[];
   passing_score: number;
-  image?: string;
+  max_attempts: number;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface TestQuestion {
   id: number;
   test: number;
-  question_text: string;
-  options: string[];
-  order: number;
   topic?: string;
-  difficulty?: string;
+  question_text: string;
+  question_type?: string;
+  options: string[];
+  correct_answer?: string | string[];
+  explanation?: string;
+  difficulty?: number;
+  points?: number;
+  order: number;
 }
 
 export interface TestAttempt {
   id: number;
+  user: User;
   test: number;
-  user: number;
   start_time: string;
   end_time?: string;
-  completed: boolean;
+  status?: string;
   score?: number;
-  answers?: TestAnswer[];
-}
-
-export interface TestAnswer {
-  question_id: number;
-  selected_option: string;
-  is_correct: boolean;
-  correct_answer: string;
-  explanation: string;
+  answers?: any;
+  attempt_number?: number;
 }
 
 export interface TestResult {
   id: number;
-  test: number;
-  user: number;
-  attempt: number;
+  attempt: TestAttempt;
   total_questions: number;
   correct_answers: number;
   score_percent: number;
-  passed: boolean;
   time_spent: number;
-  detailed_results: TestAnswer[];
+  passed: boolean;
+  feedback?: string;
+  detailed_results: any;
   created_at: string;
 }
 
@@ -128,23 +132,21 @@ export interface Course {
   title: string;
   description: string;
   long_description?: string;
-  category: string;
-  level: string;
-  duration: number;
-  students: number;
-  rating: number;
-  featured: boolean;
-  tags: string[];
-  instructor: {
-    id: number;
-    name: string;
-    image?: string;
-  };
-  certificate: boolean;
-  last_updated: string;
   image?: string;
-  language?: string;
+  category: Category | number | string | null;
+  level: string;
+  duration: string;
+  instructor: User;
+  rating: number;
+  students: number;
   price?: string;
+  featured: boolean;
+  tags: (Tag | number | string)[];
+  last_updated: string;
+  language?: string;
+  certificate: boolean;
+  prerequisites?: string;
+  objectives?: string[];
 }
 
 // Типы для статей
@@ -153,14 +155,15 @@ export interface Article {
   title: string;
   description: string;
   content: string;
-  category: string | Category;
+  image?: string;
+  category: Category | number | string | null;
+  date: string;
   author: User;
-  featured: boolean;
-  tags: string[];
+  read_time?: number;
+  tags: (Tag | number | string)[];
   views: number;
   likes: number;
-  date: string;
-  image?: string;
+  featured: boolean;
   comments_count: number;
 }
 
@@ -169,15 +172,15 @@ export interface Discussion {
   id: number;
   title: string;
   description: string;
-  category: string;
+  category: Category | number | string | null;
   author: User;
-  tags: string[];
-  pinned: boolean;
-  solved: boolean;
+  date: string;
+  replies: number;
   views: number;
   likes: number;
-  replies: number;
-  date: string;
+  tags: (Tag | number | string)[];
+  pinned: boolean;
+  solved: boolean;
 }
 
 export interface Reply {
@@ -185,6 +188,54 @@ export interface Reply {
   discussion: number;
   user: User;
   content: string;
-  likes: number;
   date: string;
+  likes: number;
+}
+
+export interface CourseSection {
+  id: number;
+  course: number;
+  title: string;
+  order: number;
+  lessons: Lesson[];
+}
+
+export interface Lesson {
+  id: number;
+  section: number;
+  title: string;
+  duration: string;
+  type: string;
+  order: number;
+}
+
+export interface CourseMaterial {
+  id: number;
+  course: number;
+  title: string;
+  file: string;
+  type: string;
+  size: string;
+}
+
+export interface CourseReview {
+  id: number;
+  course: number;
+  user: User;
+  rating: number;
+  date: string;
+  comment: string;
+}
+
+export interface CourseProgress {
+  id?: number;
+  user?: User;
+  lesson?: Lesson;
+  lesson_id?: number;
+  completed?: boolean;
+  date_completed?: string;
+  course_id?: number;
+  completed_lessons?: number;
+  total_lessons?: number;
+  progress_percentage?: number;
 }

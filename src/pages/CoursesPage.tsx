@@ -30,6 +30,20 @@ const CoursesPage: React.FC = () => {
   const [categories, setCategories] = useState<string[]>(['Все категории']);
   const [levels, setLevels] = useState<string[]>(['Все уровни']);
   
+  // Универсальная функция для получения имени категории
+  const getCategoryName = (category: string | number | any | null | undefined): string => {
+    if (!category) return '';
+    if (typeof category === 'object') return category.name;
+    return String(category);
+  };
+
+  // Универсальная функция для получения уровня
+  const getLevelName = (level: string | any | null | undefined): string => {
+    if (!level) return '';
+    if (typeof level === 'object') return level.name || '';
+    return String(level);
+  };
+
   useEffect(() => {
     const fetchCourses = async () => {
       setLoading(true);
@@ -39,37 +53,27 @@ const CoursesPage: React.FC = () => {
         if (selectedCategory !== 'Все категории') params.category = selectedCategory;
         if (selectedLevel !== 'Все уровни') params.level = selectedLevel;
         if (searchTerm) params.search = searchTerm;
-        
-        // Добавляем сортировку только если пользователь выбрал что-то отличное от дефолтной
         if (sortBy === 'рейтинг') params.ordering = '-rating';
         if (sortBy === 'новые') params.ordering = '-last_updated';
-        // Популярность - это дефолт на бэкенде, не нужно отправлять
-        
-        console.log('Запрос курсов с параметрами:', params);
         const data = await courseService.getCourses(params);
-        console.log('Полученные данные курсов:', data);
-        
         setCourses(Array.isArray(data) ? data : []);
-        
-        // Извлекаем уникальные категории и уровни из данных
+        // Извлекаем уникальные категории и уровни как строки
         if (Array.isArray(data) && data.length > 0) {
-          const uniqueCategories = ['Все категории', ...new Set(data.map(course => course.category))];
-          const uniqueLevels = ['Все уровни', ...new Set(data.map(course => course.level))];
-          
+          const uniqueCategories = ['Все категории', ...new Set(data.map(course => getCategoryName(course.category)))];
+          const uniqueLevels = ['Все уровни', ...new Set(data.map(course => getLevelName(course.level)))];
           setCategories(uniqueCategories);
           setLevels(uniqueLevels);
         } else {
-          console.warn('Данные курсов пусты или не являются массивом:', data);
+          setCategories(['Все категории']);
+          setLevels(['Все уровни']);
         }
       } catch (err: any) {
-        console.error('Ошибка загрузки курсов:', err);
         setError('Ошибка загрузки курсов: ' + (err.message || JSON.stringify(err)));
         setCourses([]);
       } finally {
         setLoading(false);
       }
     };
-    
     fetchCourses();
   }, [searchTerm, selectedCategory, selectedLevel, sortBy]);
 

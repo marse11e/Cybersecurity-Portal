@@ -17,6 +17,8 @@ import { testService } from '../api/services/test.service';
 import { Test, TestQuestion, TestResult } from '../api/types';
 import LoadingSpinner from '../components/LoadingSpinner';
 import ErrorDisplay from '../components/ErrorDisplay';
+import { useSelector } from 'react-redux';
+import { RootState } from '../store';
 
 const TestDetailsPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -29,6 +31,8 @@ const TestDetailsPage: React.FC = () => {
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [selectedOption, setSelectedOption] = useState<number | null>(null);
   const [showExplanation, setShowExplanation] = useState(false);
+  const user = useSelector((state: RootState) => state.user.user);
+  const isAuthenticated = useSelector((state: RootState) => state.user.isAuthenticated);
 
   useEffect(() => {
     if (!id) return;
@@ -74,11 +78,33 @@ const TestDetailsPage: React.FC = () => {
     }
   };
 
+  // Универсальная функция для получения имени категории
+  const getCategoryName = (category: string | number | any | null | undefined): string => {
+    if (!category) return '';
+    if (typeof category === 'object') return category.name;
+    return String(category);
+  };
+
+  // Универсальная функция для получения имени тега
+  const getTagName = (tag: string | number | any | null | undefined): string => {
+    if (!tag) return '';
+    if (typeof tag === 'object') return tag.name;
+    return String(tag);
+  };
+
   if (loading) {
-    return <LoadingSpinner fullPage text="Загрузка теста..." />;
+    return <div className="min-h-screen bg-[#1a1a1a] flex items-center justify-center text-white">Загрузка теста...</div>;
   }
-  if (error || !test) {
-    return <ErrorDisplay error={error || 'Тест не найден'} retryFn={() => window.location.reload()} />;
+  if (error || test === null) {
+    return (
+      <div className="min-h-screen bg-[#1a1a1a] flex items-center justify-center">
+        <div className="bg-[#222222] p-8 rounded-lg border border-[#333333] text-center">
+          <div className="text-2xl font-bold text-white mb-4">Требуется авторизация</div>
+          <div className="text-gray-400 mb-6">Для просмотра подробной информации о тесте необходимо войти в систему.</div>
+          <a href="/login" className="bg-[#ffcc00] text-black px-6 py-2 rounded-md font-medium hover:bg-[#ffd633]">Войти</a>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -91,7 +117,7 @@ const TestDetailsPage: React.FC = () => {
               <div className="flex items-center space-x-2 text-sm text-gray-400 mb-2">
                 <Link to="/tests" className="hover:text-white">Тесты</Link>
                 <span>/</span>
-                <Link to={`/tests?category=${test.category}`} className="hover:text-white">{test.category}</Link>
+                <Link to={`/tests?category=${getCategoryName(test.category)}`} className="hover:text-white">{getCategoryName(test.category)}</Link>
               </div>
               <h1 className="text-3xl md:text-4xl font-bold mb-4">{test.title}</h1>
               <p className="text-lg text-gray-300 mb-6">{test.description}</p>
@@ -112,8 +138,18 @@ const TestDetailsPage: React.FC = () => {
               </div>
               <div className="flex flex-wrap gap-3">
                 <span className="px-3 py-1 bg-[#333333] text-[#ffcc00] rounded-full text-sm">{test.level}</span>
-                <span className="px-3 py-1 bg-[#333333] text-green-400 rounded-full text-sm">{test.category}</span>
+                <span className="px-3 py-1 bg-[#333333] text-green-400 rounded-full text-sm">{getCategoryName(test.category)}</span>
               </div>
+              {/* Отображение тегов теста, если есть */}
+              {Array.isArray(test.tags) && test.tags.length > 0 && (
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {test.tags.map((tag, idx) => (
+                    <span key={idx} className="px-3 py-1 bg-[#333333] text-gray-300 rounded-full text-sm">
+                      {getTagName(tag)}
+                    </span>
+                  ))}
+                </div>
+              )}
             </div>
             <div className="md:w-1/3">
               <div className="bg-[#222222] rounded-lg border border-[#333333] overflow-hidden text-white">

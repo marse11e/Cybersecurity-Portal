@@ -1,4 +1,6 @@
 import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios';
+import { store } from '../store';
+import { logout } from '../store/userSlice';
 
 const API_BASE_URL = 'http://localhost:8000/api/v1';
 
@@ -15,7 +17,9 @@ class ApiClient {
 
     // Интерсептор для токена
     this.client.interceptors.request.use((config) => {
-      const token = localStorage.getItem('token');
+      // Получаем токен из Redux store, если есть
+      const state = store.getState();
+      const token = state.user?.access || localStorage.getItem('token');
       if (token) {
         config.headers.Authorization = `Bearer ${token}`;
       }
@@ -36,8 +40,7 @@ class ApiClient {
           
           // Обработка конкретных кодов ошибок
           if (error.response.status === 401) {
-            localStorage.removeItem('token');
-            window.location.href = '/login';
+            store.dispatch(logout());
           }
         } else if (error.request) {
           // Запрос отправлен, но нет ответа (например, нет соединения)

@@ -21,6 +21,8 @@ import { articleService } from '../api/services/article.service';
 import { Article, Category, Tag } from '../api/types';
 import LoadingSpinner from '../components/LoadingSpinner';
 import ErrorDisplay from '../components/ErrorDisplay';
+import { useSelector } from 'react-redux';
+import { RootState } from '../store';
 
 const ArticleDetailsPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -35,6 +37,8 @@ const ArticleDetailsPage: React.FC = () => {
   const [copySuccess, setCopySuccess] = useState(false);
   const [replyingTo, setReplyingTo] = useState<number | null>(null);
   const [replyText, setReplyText] = useState('');
+  const user = useSelector((state: RootState) => state.user.user);
+  const isAuthenticated = useSelector((state: RootState) => state.user.isAuthenticated);
 
   const fetchArticle = async () => {
     setLoading(true);
@@ -48,7 +52,7 @@ const ArticleDetailsPage: React.FC = () => {
           // Загрузка похожих статей
           try {
             const relatedData = await articleService.getArticles({
-              category: typeof data.category === 'object' ? data.category.slug : data.category,
+              category: typeof data.category === 'object' && data.category !== null ? data.category.slug : String(data.category),
               page_size: 3
             });
             if (Array.isArray(relatedData)) {
@@ -118,48 +122,37 @@ const ArticleDetailsPage: React.FC = () => {
     // Здесь можно добавить отправку ответа на API
   };
 
-  // Получаем название категории (строку) из объекта категории или строки
-  const getCategoryName = (category: string | Category | null | undefined): string => {
+  // Получаем название категории (строку) из объекта категории, строки или числа
+  const getCategoryName = (category: string | number | Category | null | undefined): string => {
     if (!category) return '';
-    return typeof category === 'object' ? category.name : category;
+    if (typeof category === 'object') return category.name;
+    return String(category);
   };
-  
-  // Получаем строковое представление тега из объекта тега или строки
-  const getTagName = (tag: string | Tag | null | undefined): string => {
+
+  // Получаем строковое представление тега из объекта тега, строки или числа
+  const getTagName = (tag: string | number | Tag | null | undefined): string => {
     if (!tag) return '';
-    return typeof tag === 'object' ? tag.name : tag;
+    if (typeof tag === 'object') return tag.name;
+    return String(tag);
   };
 
   if (loading) {
     return <LoadingSpinner fullPage text="Загрузка статьи..." />;
   }
   
-  if (error) {
+  if (error || article === null) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#1a1a1a] p-4">
-        <div className="max-w-lg w-full">
-          <ErrorDisplay error={error} retryFn={fetchArticle} />
-          <div className="mt-6 text-center">
-            <Link 
-              to="/articles" 
-              className="inline-flex items-center text-[#ffcc00] hover:underline"
-            >
-              <ArrowLeft className="h-4 w-4 mr-1" />
-              Вернуться к списку статей
-            </Link>
-          </div>
+      <div className="min-h-screen bg-[#1a1a1a] flex items-center justify-center">
+        <div className="bg-[#222222] p-8 rounded-lg border border-[#333333] text-center">
+          <div className="text-2xl font-bold text-white mb-4">Требуется авторизация</div>
+          <div className="text-gray-400 mb-6">Для просмотра подробной информации о статье необходимо войти в систему.</div>
+          <a href="/login" className="bg-[#ffcc00] text-black px-6 py-2 rounded-md font-medium hover:bg-[#ffd633]">Войти</a>
         </div>
       </div>
     );
   }
   
-  if (!article) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-[#1a1a1a] text-gray-400 text-xl">Статья не найдена</div>
-    );
-  }
-
-  const categoryName = getCategoryName(article.category);
+  const categoryName = getCategoryName(typeof article.category === 'number' ? String(article.category) : article.category);
   
   // Безопасно приводим дату к строке
   const dateStr = typeof article.date === 'object' ? 
@@ -181,8 +174,8 @@ const ArticleDetailsPage: React.FC = () => {
                 Назад к статьям
               </Link>
               <span>/</span>
-              <Link to={`/articles?category=${categoryName}`} className="hover:text-white">
-                {categoryName}
+              <Link to={`/articles?category=${getCategoryName(article.category)}`} className="hover:text-white">
+                {getCategoryName(article.category)}
               </Link>
             </div>
             <h1 className="text-3xl md:text-4xl font-bold mb-4">{article.title}</h1>
@@ -205,7 +198,7 @@ const ArticleDetailsPage: React.FC = () => {
               {article.author && typeof article.author === 'object' && (
                 <>
                   <img 
-                    src={article.author.image || ''} 
+                    src={article.author.image || article.author.avatar || ''} 
                     alt={article.author.first_name} 
                     className="w-12 h-12 rounded-full mr-3"
                   />
@@ -324,7 +317,7 @@ const ArticleDetailsPage: React.FC = () => {
                 <div className="bg-[#222222] rounded-lg border border-[#333333] p-6 mb-8">
                   <div className="flex items-start">
                     <img 
-                      src={article.author.image || ''} 
+                      src={article.author.image || article.author.avatar || ''} 
                       alt={`${article.author.first_name} ${article.author.last_name}`} 
                       className="w-16 h-16 rounded-full mr-4"
                     />
@@ -565,7 +558,8 @@ const ArticleCard: React.FC<{ article: Article }> = ({ article }) => {
   // Получаем название категории
   const getCategoryName = (category: string | Category | null | undefined): string => {
     if (!category) return '';
-    return typeof category === 'object' ? category.name : category;
+    if (typeof category === 'object') return category.name;
+    return String(category);
   };
   
   // Безопасное получение имени автора
@@ -583,7 +577,7 @@ const ArticleCard: React.FC<{ article: Article }> = ({ article }) => {
         />
         <div className="absolute top-0 right-0 m-2">
           <span className="px-3 py-1 bg-[#333333] text-[#ffcc00] rounded-full text-sm">
-            {getCategoryName(article.category)}
+            {getCategoryName(typeof article.category === 'number' ? String(article.category) : article.category)}
           </span>
         </div>
       </div>

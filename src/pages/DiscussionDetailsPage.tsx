@@ -11,6 +11,8 @@ import {
 } from 'lucide-react';
 import { discussionService } from '../api/services/discussion.service';
 import { Discussion, Reply } from '../api/types';
+import { useSelector } from 'react-redux';
+import { RootState } from '../store';
 
 const DiscussionDetailsPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -20,6 +22,8 @@ const DiscussionDetailsPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [liked, setLiked] = useState(false);
+  const user = useSelector((state: RootState) => state.user.user);
+  const isAuthenticated = useSelector((state: RootState) => state.user.isAuthenticated);
 
   useEffect(() => {
     const fetchDiscussion = async () => {
@@ -76,6 +80,29 @@ const DiscussionDetailsPage: React.FC = () => {
     }
   };
 
+  // Универсальная функция для получения имени категории
+  const getCategoryName = (category: string | number | any | null | undefined): string => {
+    if (!category) return '';
+    if (typeof category === 'object') return category.name;
+    return String(category);
+  };
+
+  // Универсальная функция для получения имени автора
+  const getAuthorName = (author: any): string => {
+    if (!author) return '';
+    if (author.first_name || author.last_name) {
+      return `${author.first_name || ''} ${author.last_name || ''}`.trim();
+    }
+    return author.name || '';
+  };
+
+  // Универсальная функция для получения имени тега
+  const getTagName = (tag: string | number | any | null | undefined): string => {
+    if (!tag) return '';
+    if (typeof tag === 'object') return tag.name;
+    return String(tag);
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-[#1a1a1a] py-12 flex items-center justify-center">
@@ -84,10 +111,38 @@ const DiscussionDetailsPage: React.FC = () => {
     );
   }
 
-  if (error || !discussion) {
+  if (error) {
+    // Если ошибка связана с авторизацией
+    if (error.toLowerCase().includes('авторизац') || error.toLowerCase().includes('authorization')) {
+      return (
+        <div className="min-h-screen bg-[#1a1a1a] flex items-center justify-center">
+          <div className="bg-[#222222] p-8 rounded-lg border border-[#333333] text-center">
+            <div className="text-2xl font-bold text-white mb-4">Требуется авторизация</div>
+            <div className="text-gray-400 mb-6">Для просмотра подробной информации об обсуждении необходимо войти в систему.</div>
+            <a href="/login" className="bg-[#ffcc00] text-black px-6 py-2 rounded-md font-medium hover:bg-[#ffd633]">Войти</a>
+          </div>
+        </div>
+      );
+    }
+    // Любая другая ошибка
     return (
-      <div className="min-h-screen bg-[#1a1a1a] py-12 flex items-center justify-center">
-        <div className="text-red-500">{error || 'Обсуждение не найдено'}</div>
+      <div className="min-h-screen bg-[#1a1a1a] flex items-center justify-center">
+        <div className="bg-[#222222] p-8 rounded-lg border border-[#333333] text-center">
+          <div className="text-2xl font-bold text-white mb-4">Ошибка</div>
+          <div className="text-gray-400 mb-6">{error}</div>
+        </div>
+      </div>
+    );
+  }
+
+  if (discussion === null) {
+    return (
+      <div className="min-h-screen bg-[#1a1a1a] flex items-center justify-center">
+        <div className="bg-[#222222] p-8 rounded-lg border border-[#333333] text-center">
+          <div className="text-2xl font-bold text-white mb-4">Обсуждение не найдено</div>
+          <div className="text-gray-400 mb-6">Возможно, оно было удалено или вы перешли по неверной ссылке.</div>
+          <a href="/forum" className="bg-[#ffcc00] text-black px-6 py-2 rounded-md font-medium hover:bg-[#ffd633]">К форуму</a>
+        </div>
       </div>
     );
   }
@@ -110,7 +165,7 @@ const DiscussionDetailsPage: React.FC = () => {
             <div className="bg-[#222222] rounded-lg border border-[#333333] mb-8">
               <div className="p-6">
                 <div className="flex items-center gap-2 mb-4">
-                  <span className="bg-[#333333] text-[#ffcc00] px-2 py-1 rounded-full text-sm">{discussion.category}</span>
+                  <span className="bg-[#333333] text-[#ffcc00] px-2 py-1 rounded-full text-sm">{getCategoryName(discussion.category)}</span>
                   {discussion.solved && (
                     <span className="bg-[#333333] text-green-400 flex items-center px-2 py-1 rounded-full text-sm">
                       <CheckCircle className="h-4 w-4 mr-1" />
@@ -127,12 +182,12 @@ const DiscussionDetailsPage: React.FC = () => {
                   {discussion.author && (
                     <>
                       <img 
-                        src={discussion.author.image || "https://via.placeholder.com/40"}
-                        alt={discussion.author.first_name}
+                        src={discussion.author.image || discussion.author.avatar || "https://via.placeholder.com/40"}
+                        alt={getAuthorName(discussion.author)}
                         className="w-10 h-10 rounded-full mr-4"
                       />
                       <div>
-                        <div className="font-medium text-white">{discussion.author.first_name} {discussion.author.last_name}</div>
+                        <div className="font-medium text-white">{getAuthorName(discussion.author)}</div>
                         <div className="text-sm text-gray-400">Опубликовано {discussion.date}</div>
                       </div>
                     </>
@@ -142,6 +197,17 @@ const DiscussionDetailsPage: React.FC = () => {
                 <div className="prose prose-invert max-w-none mb-6 text-gray-300">
                   <p>{discussion.description}</p>
                 </div>
+
+                {/* Отображение тегов обсуждения, если есть */}
+                {Array.isArray(discussion.tags) && discussion.tags.length > 0 && (
+                  <div className="flex flex-wrap gap-2 mt-2">
+                    {discussion.tags.map((tag, idx) => (
+                      <span key={idx} className="px-3 py-1 bg-[#333333] text-gray-300 rounded-full text-sm">
+                        {getTagName(tag)}
+                      </span>
+                    ))}
+                  </div>
+                )}
 
                 <div className="flex items-center justify-between pt-6 border-t border-[#333333]">
                   <div className="flex items-center space-x-4">
@@ -206,8 +272,8 @@ const DiscussionDetailsPage: React.FC = () => {
                     <div className="flex">
                       {reply.user && (
                         <img 
-                          src={reply.user.image || "https://via.placeholder.com/40"}
-                          alt={reply.user.first_name} 
+                          src={reply.user.image || reply.user.avatar || "https://via.placeholder.com/40"}
+                          alt={getAuthorName(reply.user)} 
                           className="w-10 h-10 rounded-full mr-4"
                         />
                       )}
@@ -215,7 +281,7 @@ const DiscussionDetailsPage: React.FC = () => {
                         <div className="flex justify-between mb-2">
                           <div>
                             <div className="font-medium text-white">
-                              {reply.user ? `${reply.user.first_name} ${reply.user.last_name}` : 'Пользователь'}
+                              {reply.user ? getAuthorName(reply.user) : 'Пользователь'}
                             </div>
                             <div className="text-sm text-gray-400">{reply.date}</div>
                           </div>

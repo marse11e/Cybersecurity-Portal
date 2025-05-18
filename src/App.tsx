@@ -1,5 +1,7 @@
 import { createBrowserRouter, RouterProvider, Route, createRoutesFromElements } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
+import { Provider } from 'react-redux';
+import { store } from './store';
 
 // Layouts
 import MainLayout from './layouts/MainLayout';
@@ -49,15 +51,16 @@ function App() {
   );
 
   return (
-    <AuthProvider>
-      <RouterProvider
-        router={router}
-        future={{
-          v7_startTransition: true,
-          v7_relativeSplatPath: true
-        }}
-      />
-    </AuthProvider>
+    <Provider store={store}>
+      <AuthProvider>
+        <RouterProvider
+          router={router}
+          future={{
+            v7_startTransition: true
+          }}
+        />
+      </AuthProvider>
+    </Provider>
   );
 }
 

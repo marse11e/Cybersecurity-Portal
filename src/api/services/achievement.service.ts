@@ -8,7 +8,14 @@ export const achievementService = {
     page?: number;
     page_size?: number;
   }): Promise<Achievement[]> {
-    return apiClient.get<Achievement[]>('/achievements/', { params });
+    const response = await apiClient.get<Achievement[] | { results: Achievement[] }>('/achievements/', { params });
+    if (response && typeof response === 'object' && 'results' in response) {
+      return response.results;
+    }
+    if (Array.isArray(response)) {
+      return response;
+    }
+    return [];
   },
 
   async getAchievement(id: number): Promise<Achievement> {
@@ -20,10 +27,24 @@ export const achievementService = {
     page?: number;
     page_size?: number;
   }): Promise<UserAchievement[]> {
-    return apiClient.get<UserAchievement[]>('/user-achievements/', { params });
+    const response = await apiClient.get<UserAchievement[] | { results: UserAchievement[] }>('/user-achievements/', { params });
+    if (response && typeof response === 'object' && 'results' in response) {
+      return response.results;
+    }
+    if (Array.isArray(response)) {
+      return response;
+    }
+    return [];
   },
 
   async getCurrentUserAchievements(): Promise<UserAchievement[]> {
-    return apiClient.get<UserAchievement[]>('/users/me/achievements/');
+    const response = await apiClient.get<UserAchievement[] | { results: UserAchievement[] }>('/users/me/achievements/');
+    if (response && typeof response === 'object' && 'results' in response) {
+      return response.results;
+    }
+    if (Array.isArray(response)) {
+      return response;
+    }
+    return [];
   },
 };

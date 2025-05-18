@@ -37,7 +37,7 @@ interface CourseProgress {
 
 export const courseService = {
   async getCourses(params?: {
-    category?: string;
+    category?: string | number;
     level?: string;
     featured?: boolean;
     search?: string;
@@ -48,26 +48,29 @@ export const courseService = {
     try {
       const response = await apiClient.get<Course[] | { results: Course[] }>('/courses/', { params });
       
-      // Проверяем, является ли ответ объектом с полем results (пагинированный ответ)
       if (response && typeof response === 'object' && 'results' in response) {
         return response.results;
       }
       
-      // Если ответ - массив, возвращаем его
       if (Array.isArray(response)) {
         return response;
       }
       
-      console.error('Неожиданный формат ответа API для курсов:', response);
       return [];
     } catch (error) {
-      console.error('Ошибка при получении курсов:', error);
       return [];
     }
   },
 
-  async getCourse(id: number): Promise<Course> {
-    return apiClient.get<Course>(`/courses/${id}/`);
+  async getCourse(id: number): Promise<Course | null> {
+    try {
+      return await apiClient.get<Course>(`/courses/${id}/`);
+    } catch (error: any) {
+      if (error?.response?.status === 401 || error?.response?.status === 403) {
+        return null;
+      }
+      throw error;
+    }
   },
 
   async getCourseSections(courseId: number): Promise<CourseSection[]> {
@@ -163,8 +166,27 @@ export const courseService = {
       
       return [];
     } catch (error) {
-      console.error('Ошибка при получении избранных курсов:', error);
       return [];
     }
-  }
+  },
+
+  async enrollCourse(courseId: number): Promise<any> {
+    return apiClient.post(`/courses/${courseId}/enroll/`);
+  },
+
+  async addFavoriteCourse(courseId: number): Promise<any> {
+    return apiClient.post('/favorite-courses/', { course_id: courseId });
+  },
+
+  async removeFavoriteCourse(favoriteId: number): Promise<any> {
+    return apiClient.delete(`/favorite-courses/${favoriteId}/`);
+  },
+
+  async getFavoriteCourses(): Promise<any[]> {
+    return apiClient.get('/favorite-courses/');
+  },
+
+  async addCourseReview({ course, rating, comment }: { course: number, rating: number, comment: string }): Promise<any> {
+    return apiClient.post('/course-reviews/', { course, rating, comment });
+  },
 }; 

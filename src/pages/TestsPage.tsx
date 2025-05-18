@@ -12,6 +12,8 @@ import {
   Server,
   Award
 } from 'lucide-react';
+import { useSelector } from 'react-redux';
+import { RootState } from '../store';
 
 // Моковые данные для тестов
 const testsData = [
@@ -143,12 +145,29 @@ const testsData = [
   }
 ];
 
+// Универсальная функция для получения имени категории
+const getCategoryName = (category: string | number | any | null | undefined): string => {
+  if (!category) return '';
+  if (typeof category === 'object') return category.name;
+  return String(category);
+};
+
+// Универсальная функция для получения имени тега
+const getTagName = (tag: string | number | any | null | undefined): string => {
+  if (!tag) return '';
+  if (typeof tag === 'object') return tag.name;
+  return String(tag);
+};
+
 const TestsPage: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All Categories');
   const [selectedLevel, setSelectedLevel] = useState('All Levels');
   const [sortBy, setSortBy] = useState('popularity');
   const [showFilters, setShowFilters] = useState(false);
+  
+  const user = useSelector((state: RootState) => state.user.user);
+  const isAuthenticated = useSelector((state: RootState) => state.user.isAuthenticated);
   
   // Get unique categories
   const categories = ['All Categories', ...new Set(testsData.map(test => test.category))];
@@ -524,7 +543,7 @@ const FeaturedTestCard: React.FC<{ test: any }> = ({ test }) => (
     <div className="p-6 md:w-3/5">
       <div className="flex items-center mb-2 gap-2">
         <span className="px-2 py-1 bg-[#333333] text-[#ffcc00] rounded-full text-sm">
-          {test.category}
+          {getCategoryName(test.category)}
         </span>
         <span className="px-2 py-1 bg-[#333333] text-[#ffcc00] rounded-full text-sm">
           {test.level}
@@ -590,6 +609,13 @@ const TestCard: React.FC<{ test: any }> = ({ test }) => (
           <ClipboardList className="h-4 w-4 mr-1" />
           <span>{test.questions} вопросов</span>
         </div>
+      </div>
+      <div className="flex flex-wrap gap-2 mt-2">
+        {test.tags.map((tag: any, idx: number) => (
+          <span key={idx} className="px-2 py-1 bg-[#333333] text-gray-300 rounded-full text-xs">
+            {getTagName(tag)}
+          </span>
+        ))}
       </div>
       <Link 
         to={`/tests/${test.id}`} 

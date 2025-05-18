@@ -13,7 +13,9 @@ import {
   Shield, 
   Star 
 } from 'lucide-react';
-import { useAuth } from '../context/AuthContext';
+import { useSelector, useDispatch } from 'react-redux';
+import { RootState } from '../store';
+import { logout } from '../store/userSlice';
 import { useNavigate } from 'react-router-dom';
 
 const ProfilePage: React.FC = () => {
@@ -36,29 +38,31 @@ const ProfilePage: React.FC = () => {
   const [passwordError, setPasswordError] = useState<string | null>(null);
   const [passwordSuccess, setPasswordSuccess] = useState<string | null>(null);
 
-  const { user: authUser, logout, isAuthenticated } = useAuth();
+  const dispatch = useDispatch();
+  const user = useSelector((state: RootState) => state.user.user);
+  const isAuthenticated = useSelector((state: RootState) => state.user.isAuthenticated);
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (!isAuthenticated || !authUser) {
+    if (!isAuthenticated || !user) {
       navigate('/login');
       return;
     }
     setLoading(true);
     setError(null);
     setFormData({
-      first_name: authUser.first_name,
-      last_name: authUser.last_name,
-      email: authUser.email
+      first_name: user.first_name,
+      last_name: user.last_name,
+      email: user.email
     });
-    userService.getUserActivities(authUser.id)
+    userService.getUserActivities(user.id)
       .then(setActivities)
       .catch(() => setError('Не удалось загрузить активности'));
-    userService.getUserAchievements(authUser.id)
+    userService.getUserAchievements(user.id)
       .then(setAchievements)
       .catch(() => setError('Не удалось загрузить достижения'));
     setLoading(false);
-  }, [authUser, isAuthenticated, navigate]);
+  }, [user, isAuthenticated, navigate]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -72,7 +76,7 @@ const ProfilePage: React.FC = () => {
 
   const handleProfileSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!authUser) return;
+    if (!user) return;
     try {
       const updatedUser = await userService.updateUserProfile(formData);
       setFormData({
@@ -110,6 +114,36 @@ const ProfilePage: React.FC = () => {
     }
   };
 
+  // Универсальная функция для получения имени категории
+  const getCategoryName = (category: string | number | any | null | undefined): string => {
+    if (!category) return '';
+    if (typeof category === 'object') return category.name;
+    return String(category);
+  };
+
+  // Универсальная функция для получения имени тега
+  const getTagName = (tag: string | number | any | null | undefined): string => {
+    if (!tag) return '';
+    if (typeof tag === 'object') return tag.name;
+    return String(tag);
+  };
+
+  // Универсальная функция для получения имени автора
+  const getAuthorName = (author: any): string => {
+    if (!author) return '';
+    if (author.first_name || author.last_name) {
+      return `${author.first_name || ''} ${author.last_name || ''}`.trim();
+    }
+    return author.name || '';
+  };
+
+  // Универсальная функция для получения иконки достижения
+  const getIconUrl = (icon: string | { url: string } | null | undefined): string => {
+    if (!icon) return '';
+    if (typeof icon === 'object' && icon.url) return icon.url;
+    return String(icon);
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-[#1a1a1a] flex items-center justify-center">
@@ -118,7 +152,7 @@ const ProfilePage: React.FC = () => {
     );
   }
 
-  if (error || !authUser) {
+  if (error || !user) {
     return (
       <div className="min-h-screen bg-[#1a1a1a] flex items-center justify-center">
         <div className="text-red-500">{error || 'Пользователь не найден'}</div>
@@ -136,14 +170,14 @@ const ProfilePage: React.FC = () => {
               <div className="flex flex-col items-center text-center mb-6">
                 <div className="relative">
                   <img 
-                    src={authUser.image || "https://via.placeholder.com/100"} 
-                    alt={authUser.first_name} 
+                    src={user.image || user.avatar || "https://via.placeholder.com/100"} 
+                    alt={user.first_name} 
                     className="w-24 h-24 rounded-full mb-4"
                   />
                   <span className="absolute bottom-4 right-0 bg-green-500 w-4 h-4 rounded-full border-2 border-[#222222]"></span>
                 </div>
-                <h2 className="text-xl font-bold text-white">{authUser.first_name} {authUser.last_name}</h2>
-                <p className="text-gray-400">{authUser.email}</p>
+                <h2 className="text-xl font-bold text-white">{user.first_name} {user.last_name}</h2>
+                <p className="text-gray-400">{user.email}</p>
               </div>
               <nav>
                 <ul className="space-y-2">
@@ -194,7 +228,7 @@ const ProfilePage: React.FC = () => {
                 </ul>
               </nav>
               <div className="mt-8 pt-6 border-t border-[#333333]">
-                <button onClick={logout} className="w-full flex items-center justify-center px-4 py-2 text-red-400 hover:text-red-300 rounded-md hover:bg-[#333333]">
+                <button onClick={() => dispatch(logout())} className="w-full flex items-center justify-center px-4 py-2 text-red-400 hover:text-red-300 rounded-md hover:bg-[#333333]">
                   <LogOut className="h-5 w-5 mr-2" />
                   Выйти
                 </button>
@@ -205,23 +239,23 @@ const ProfilePage: React.FC = () => {
               <div className="space-y-3">
                 <div className="flex justify-between">
                   <span className="text-gray-400">Курсы завершено</span>
-                  <span className="text-white font-medium">{authUser.courses_completed || 0}</span>
+                  <span className="text-white font-medium">{user.courses_completed || 0}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-400">Тесты пройдено</span>
-                  <span className="text-white font-medium">{authUser.tests_completed || 0}</span>
+                  <span className="text-white font-medium">{user.tests_completed || 0}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-400">Статей прочитано</span>
-                  <span className="text-white font-medium">{authUser.articles_read || 0}</span>
+                  <span className="text-white font-medium">{user.articles_read || 0}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-400">Средний балл</span>
-                  <span className="text-white font-medium">{authUser.average_score || 0}%</span>
+                  <span className="text-white font-medium">{user.average_score || 0}%</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-400">Дата регистрации</span>
-                  <span className="text-white font-medium">{authUser.date_joined || 'Н/Д'}</span>
+                  <span className="text-white font-medium">{user.date_joined || 'Н/Д'}</span>
                 </div>
               </div>
             </div>
@@ -297,19 +331,19 @@ const ProfilePage: React.FC = () => {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <div>
                         <h3 className="text-sm font-medium text-gray-400 mb-1">Имя</h3>
-                        <p className="text-white">{authUser.first_name}</p>
+                        <p className="text-white">{user.first_name}</p>
                       </div>
                       <div>
                         <h3 className="text-sm font-medium text-gray-400 mb-1">Фамилия</h3>
-                        <p className="text-white">{authUser.last_name}</p>
+                        <p className="text-white">{user.last_name}</p>
                       </div>
                       <div>
                         <h3 className="text-sm font-medium text-gray-400 mb-1">Email</h3>
-                        <p className="text-white">{authUser.email}</p>
+                        <p className="text-white">{user.email}</p>
                       </div>
                       <div>
                         <h3 className="text-sm font-medium text-gray-400 mb-1">Имя пользователя</h3>
-                        <p className="text-white">{authUser.username}</p>
+                        <p className="text-white">{user.username}</p>
                       </div>
                     </div>
                   </div>
@@ -326,10 +360,10 @@ const ProfilePage: React.FC = () => {
                       {activities.map((activity, index) => (
                         <div key={index} className="relative pl-10">
                           <div className="absolute left-0 w-8 h-8 bg-[#333333] rounded-full flex items-center justify-center border-4 border-[#222222]">
-                            {activity.type === 'course' && <BookOpen className="h-4 w-4 text-[#ffcc00]" />}
-                            {activity.type === 'test' && <FileText className="h-4 w-4 text-[#ffcc00]" />}
-                            {activity.type === 'article' && <FileText className="h-4 w-4 text-[#ffcc00]" />}
-                            {activity.type === 'achievement' && <Award className="h-4 w-4 text-[#ffcc00]" />}
+                            {activity.activity_type === 'course' && <BookOpen className="h-4 w-4 text-[#ffcc00]" />}
+                            {activity.activity_type === 'test' && <FileText className="h-4 w-4 text-[#ffcc00]" />}
+                            {activity.activity_type === 'article' && <FileText className="h-4 w-4 text-[#ffcc00]" />}
+                            {activity.activity_type === 'achievement' && <Award className="h-4 w-4 text-[#ffcc00]" />}
                           </div>
                           <div className="bg-[#2a2a2a] rounded-lg p-4">
                             <div className="flex justify-between items-start mb-2">
@@ -369,9 +403,9 @@ const ProfilePage: React.FC = () => {
                         </div>
                         <div>
                           <h3 className={`font-medium ${achievement.unlocked ? 'text-white' : 'text-gray-400'}`}>
-                            {achievement.title}
+                            {achievement.achievement.title}
                           </h3>
-                          <p className="text-sm text-gray-500">{achievement.description}</p>
+                          <p className="text-sm text-gray-500">{achievement.achievement.description}</p>
                           {achievement.unlocked && (
                             <p className="text-xs text-[#ffcc00] mt-1">Получено {achievement.date}</p>
                           )}

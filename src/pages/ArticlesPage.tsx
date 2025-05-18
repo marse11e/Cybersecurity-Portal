@@ -54,7 +54,7 @@ const ArticlesPage: React.FC = () => {
     setError(null);
     try {
       const params: any = {};
-      if (selectedCategory !== 'All Categories') params.category = selectedCategory;
+      if (selectedCategory !== 'All Categories') params.category = String(selectedCategory);
       if (searchTerm) params.search = searchTerm;
       if (sortBy === 'newest') params.ordering = '-date';
       if (sortBy === 'oldest') params.ordering = 'date';
@@ -79,10 +79,11 @@ const ArticlesPage: React.FC = () => {
     }
   };
   
-  // Получаем название категории (строку) из объекта категории или строки
-  const getCategoryName = (category: string | Category | null | undefined): string => {
+  // Получаем название категории (строку) из объекта категории, строки или числа
+  const getCategoryName = (category: string | number | Category | null | undefined): string => {
     if (!category) return '';
-    return typeof category === 'object' ? category.name : category;
+    if (typeof category === 'object') return category.name;
+    return String(category);
   };
   
   // Featured articles - с проверкой на массив

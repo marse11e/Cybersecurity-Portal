@@ -33,8 +33,15 @@ export const discussionService = {
     }
   },
 
-  async getDiscussion(id: number): Promise<Discussion> {
-    return apiClient.get<Discussion>(`/discussions/${id}/`);
+  async getDiscussion(id: number): Promise<Discussion | null> {
+    try {
+      return await apiClient.get<Discussion>(`/discussions/${id}/`);
+    } catch (error: any) {
+      if (error?.response?.status === 401 || error?.response?.status === 403) {
+        return null;
+      }
+      throw error;
+    }
   },
 
   async createDiscussion(data: {

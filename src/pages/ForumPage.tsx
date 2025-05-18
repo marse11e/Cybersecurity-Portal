@@ -15,6 +15,8 @@ import { CheckCircle } from 'lucide-react';
 import { discussionService } from '../api/services/discussion.service';
 import { categoryService } from '../api/services/category.service';
 import { Discussion, Category } from '../api/types';
+import { useSelector } from 'react-redux';
+import { RootState } from '../store';
 
 // Mock data for forum discussions
 const discussionsData = [
@@ -213,6 +215,8 @@ const ForumPage: React.FC = () => {
   const [sortBy, setSortBy] = useState<string>('newest');
   const [loading, setLoading] = useState(true);
   const [expandedCategories, setExpandedCategories] = useState<number[]>([]);
+  const user = useSelector((state: RootState) => state.user.user);
+  const isAuthenticated = useSelector((state: RootState) => state.user.isAuthenticated);
 
   useEffect(() => {
     const fetchCategories = async () => {
@@ -412,12 +416,12 @@ const ForumPage: React.FC = () => {
               ) : discussions.length > 0 ? (
                 <div className="divide-y divide-[#333333]">
                   {discussions.map(discussion => (
-                    <Link to={`/discussion/${discussion.id}`} key={discussion.id} className="block p-6 hover:bg-[#2a2a2a] transition-colors">
+                    <Link to={`/forum/${discussion.id}`} key={discussion.id} className="block p-6 hover:bg-[#2a2a2a] transition-colors">
                       <div className="flex items-start">
                         <div className="flex-1">
                           <div className="flex items-center gap-2 mb-2">
                             <span className="bg-[#333333] text-[#ffcc00] px-2 py-1 rounded-full text-xs">
-                              {discussion.category}
+                              {getCategoryName(discussion.category)}
                             </span>
                             {discussion.solved && (
                               <span className="bg-[#333333] text-green-400 flex items-center px-2 py-1 rounded-full text-xs">
@@ -450,10 +454,10 @@ const ForumPage: React.FC = () => {
                           <div className="flex-shrink-0 ml-4 flex flex-col items-center">
                             <img 
                               src={discussion.author.image || "https://via.placeholder.com/40"}
-                              alt={discussion.author.first_name} 
+                              alt={getAuthorName(discussion.author)} 
                               className="w-10 h-10 rounded-full mb-1"
                             />
-                            <span className="text-xs text-gray-400">{discussion.author.first_name}</span>
+                            <span className="text-xs text-gray-400">{getAuthorName(discussion.author)}</span>
                           </div>
                         )}
                       </div>
@@ -488,7 +492,7 @@ const DiscussionCard: React.FC<{ discussion: any }> = ({ discussion }) => (
                 Закреплено
               </span>
             )}
-            <span className="badge badge-green text-green-400">{discussion.category}</span>
+            <span className="badge badge-green text-green-400">{getCategoryName(discussion.category)}</span>
             {discussion.solved && (
               <span className="badge badge-green flex items-center text-green-400">
                 <svg className="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -508,7 +512,7 @@ const DiscussionCard: React.FC<{ discussion: any }> = ({ discussion }) => (
       <div className="flex flex-wrap gap-2 mb-4">
         {discussion.tags.map((tag: string, index: number) => (
           <span key={index} className="px-2 py-1 bg-[#333333] text-gray-300 rounded-full text-xs">
-            #{tag}
+            {getTagName(tag)}
           </span>
         ))}
       </div>
@@ -516,12 +520,12 @@ const DiscussionCard: React.FC<{ discussion: any }> = ({ discussion }) => (
       <div className="flex flex-wrap items-center justify-between">
         <div className="flex items-center">
           <img 
-            src={discussion.author.image} 
-            alt={discussion.author.name} 
+            src={discussion.author.image || "https://via.placeholder.com/40"}
+            alt={getAuthorName(discussion.author)} 
             className="w-8 h-8 rounded-full mr-3"
           />
           <div>
-            <div className="text-sm font-medium text-white">{discussion.author.name}</div>
+            <div className="text-sm font-medium text-white">{getAuthorName(discussion.author)}</div>
             <div className="text-xs text-gray-400">{discussion.author.role}</div>
           </div>
         </div>
@@ -548,5 +552,28 @@ const DiscussionCard: React.FC<{ discussion: any }> = ({ discussion }) => (
     </div>
   </div>
 );
+
+// Универсальная функция для получения имени категории
+const getCategoryName = (category: string | number | any | null | undefined): string => {
+  if (!category) return '';
+  if (typeof category === 'object') return category.name;
+  return String(category);
+};
+
+// Универсальная функция для получения имени автора
+const getAuthorName = (author: any): string => {
+  if (!author) return '';
+  if (author.first_name || author.last_name) {
+    return `${author.first_name || ''} ${author.last_name || ''}`.trim();
+  }
+  return author.name || '';
+};
+
+// Универсальная функция для получения имени тега
+const getTagName = (tag: string | number | any | null | undefined): string => {
+  if (!tag) return '';
+  if (typeof tag === 'object') return tag.name;
+  return String(tag);
+};
 
 export default ForumPage;

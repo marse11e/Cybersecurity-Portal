@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { 
   Clock, 
   Users, 
@@ -23,6 +23,9 @@ import { courseService } from '../api/services/course.service';
 import { Course } from '../api/types';
 import LoadingSpinner from '../components/LoadingSpinner';
 import ErrorDisplay from '../components/ErrorDisplay';
+import { useSelector, useDispatch } from 'react-redux';
+import { RootState } from '../store';
+import { login, logout, fetchCurrentUser } from '../store/userSlice';
 
 const CourseDetailsPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -34,6 +37,16 @@ const CourseDetailsPage: React.FC = () => {
   const [sections, setSections] = useState<any[]>([]);
   const [materials, setMaterials] = useState<any[]>([]);
   const [reviews, setReviews] = useState<any[]>([]);
+  const [isEnrolled, setIsEnrolled] = useState(false);
+  const [isFavorite, setIsFavorite] = useState(false);
+  const [favoriteId, setFavoriteId] = useState<number | null>(null);
+  const [reviewForm, setReviewForm] = useState<{ rating: number; comment: string }>({ rating: 5, comment: '' });
+  const [reviewLoading, setReviewLoading] = useState(false);
+  const [reviewError, setReviewError] = useState<string | null>(null);
+  const navigate = useNavigate();
+  const dispatch = useDispatch();
+  const user = useSelector((state: RootState) => state.user.user);
+  const isAuthenticated = useSelector((state: RootState) => state.user.isAuthenticated);
 
   useEffect(() => {
     if (!id) return;
@@ -58,6 +71,23 @@ const CourseDetailsPage: React.FC = () => {
       .finally(() => setLoading(false));
   }, [id]);
 
+  useEffect(() => {
+    if (!id || !isAuthenticated) return;
+    courseService.getCourseProgress(Number(id)).then((progress) => {
+      if (progress && progress.total_lessons > 0) setIsEnrolled(true);
+    });
+    courseService.getFavoriteCourses().then((favorites) => {
+      const fav = Array.isArray(favorites) ? favorites.find((f: any) => f.course && (f.course.id === Number(id) || f.course === Number(id))) : null;
+      if (fav) {
+        setIsFavorite(true);
+        setFavoriteId(fav.id);
+      } else {
+        setIsFavorite(false);
+        setFavoriteId(null);
+      }
+    });
+  }, [id, isAuthenticated]);
+
   const toggleSection = (index: number) => {
     if (expandedSections.includes(index)) {
       setExpandedSections(expandedSections.filter(i => i !== index));
@@ -66,12 +96,103 @@ const CourseDetailsPage: React.FC = () => {
     }
   };
 
+  const handleEnroll = async () => {
+    if (!isAuthenticated) return navigate('/login');
+    try {
+      await courseService.enrollCourse(Number(id));
+      setIsEnrolled(true);
+    } catch (e) {
+      // обработка ошибок
+    }
+  };
+
+  const handleFavorite = async () => {
+    if (!isAuthenticated) return navigate('/login');
+    if (isFavorite && favoriteId) {
+      await courseService.removeFavoriteCourse(favoriteId);
+      setIsFavorite(false);
+      setFavoriteId(null);
+    } else {
+      const fav = await courseService.addFavoriteCourse(Number(id));
+      setIsFavorite(true);
+      setFavoriteId(fav.id);
+    }
+  };
+
+  const handleReviewSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setReviewLoading(true);
+    setReviewError(null);
+    try {
+      await courseService.addCourseReview({ course: Number(id), rating: reviewForm.rating, comment: reviewForm.comment });
+      setReviewForm({ rating: 5, comment: '' });
+      const updated = await courseService.getCourseReviews(Number(id));
+      setReviews(updated);
+    } catch (err: any) {
+      setReviewError('Ошибка отправки отзыва');
+    } finally {
+      setReviewLoading(false);
+    }
+  };
+
   if (loading) {
     return <LoadingSpinner fullPage text="Загрузка курса..." />;
   }
-  if (error || !course) {
-    return <ErrorDisplay error={error || 'Курс не найден'} retryFn={() => window.location.reload()} />;
+  if (error || course === null) {
+    return (
+      <div className="min-h-screen bg-[#1a1a1a] flex items-center justify-center">
+        <div className="bg-[#222222] p-8 rounded-lg border border-[#333333] text-center">
+          <div className="text-2xl font-bold text-white mb-4">Требуется авторизация</div>
+          <div className="text-gray-400 mb-6">Для просмотра подробной информации о курсе необходимо войти в систему.</div>
+          <a href="/login" className="bg-[#ffcc00] text-black px-6 py-2 rounded-md font-medium hover:bg-[#ffd633]">Войти</a>
+        </div>
+      </div>
+    );
   }
+
+  // Универсальная функция для безопасного вывода любого значения как строки
+  const safeString = (val: any): string => {
+    if (val == null) return '';
+    if (Array.isArray(val)) return val.map(safeString).join(', ');
+    if (typeof val === 'object') return val.name || JSON.stringify(val);
+    return String(val);
+  };
+
+  // Получаем строковое представление тега из объекта тега, строки или числа
+  const getTagName = (tag: string | number | any | null | undefined): string => {
+    if (!tag) return '';
+    if (typeof tag === 'object') return tag.name || JSON.stringify(tag);
+    return String(tag);
+  };
+
+  // Получаем название категории (строку) из объекта категории, строки или числа
+  const getCategoryName = (category: string | number | any | null | undefined): string => {
+    if (!category) return '';
+    if (typeof category === 'object') return category.name || JSON.stringify(category);
+    return String(category);
+  };
+
+  // Универсальная функция для получения уровня курса
+  const getLevelName = (level: string | any | null | undefined): string => {
+    if (!level) return '';
+    if (typeof level === 'object') return level.name || JSON.stringify(level);
+    return String(level);
+  };
+
+  // Универсальная функция для получения имени инструктора
+  const getInstructorName = (instructor: any): string => {
+    if (!instructor) return '';
+    if (instructor.first_name || instructor.last_name) {
+      return `${instructor.first_name || ''} ${instructor.last_name || ''}`.trim();
+    }
+    return instructor.username || JSON.stringify(instructor);
+  };
+
+  // Получаем аватар инструктора
+  const getInstructorAvatar = (instructor: any): string => {
+    if (!instructor) return '';
+    return instructor.avatar || instructor.image || '';
+  };
 
   // Исправленные вычисления и обращения к полям
   const objectives = Array.isArray((course as any).objectives) ? (course as any).objectives : [];
@@ -105,7 +226,7 @@ const CourseDetailsPage: React.FC = () => {
               <div className="flex items-center space-x-2 text-sm text-gray-400 mb-2">
                 <Link to="/courses" className="hover:text-[#ffcc00]">Курсы</Link>
                 <span>/</span>
-                <Link to="/courses?category=Basic%20Cybersecurity" className="hover:text-[#ffcc00]">{course.category}</Link>
+                <Link to={`/courses?category=${getCategoryName(course.category)}`} className="hover:text-[#ffcc00]">{getCategoryName(course.category)}</Link>
               </div>
               <h1 className="text-3xl md:text-4xl font-bold mb-4">{course.title}</h1>
               <p className="text-lg text-gray-300 mb-6">{course.description}</p>
@@ -136,18 +257,18 @@ const CourseDetailsPage: React.FC = () => {
               
               <div className="flex items-center mb-6">
                 <img 
-                  src={instructor.image} 
-                  alt={instructor.name} 
+                  src={getInstructorAvatar(instructor)} 
+                  alt={getInstructorName(instructor)} 
                   className="w-10 h-10 rounded-full mr-3"
                 />
                 <div>
                   <div className="font-medium text-gray-300">Автор курса</div>
-                  <div className="text-[#ffcc00]">{instructor.name}</div>
+                  <div className="text-[#ffcc00]">{getInstructorName(instructor)}</div>
                 </div>
               </div>
               
               <div className="flex flex-wrap gap-3">
-                <span className="bg-[#333333] text-[#ffcc00] px-3 py-1 rounded-full">{course.level}</span>
+                <span className="bg-[#333333] text-[#ffcc00] px-3 py-1 rounded-full">{getLevelName(course.level)}</span>
                 {course.certificate && (
                   <span className="bg-[#333333] text-[#ffcc00] px-3 py-1 rounded-full flex items-center">
                     <Award className="h-3 w-3 mr-1" />
@@ -174,11 +295,18 @@ const CourseDetailsPage: React.FC = () => {
                     <span className="text-gray-400 line-through">$99.99</span>
                   </div>
                   
-                  <button className="bg-[#ffcc00] text-black hover:bg-[#ffd633] transition-colors w-full mb-3 py-2 px-4 rounded-md font-medium">
-                    Записаться на курс
+                  <button
+                    className={`bg-[#ffcc00] text-black hover:bg-[#ffd633] transition-colors w-full mb-3 py-2 px-4 rounded-md font-medium ${isEnrolled ? 'opacity-60 cursor-not-allowed' : ''}`}
+                    onClick={handleEnroll}
+                    disabled={isEnrolled}
+                  >
+                    {isEnrolled ? 'Вы записаны на курс' : 'Записаться на курс'}
                   </button>
-                  <button className="border-2 border-[#333333] text-gray-300 hover:border-[#ffcc00] hover:text-[#ffcc00] transition-colors w-full mb-6 py-2 px-4 rounded-md font-medium">
-                    Добавить в избранное
+                  <button
+                    className={`border-2 border-[#333333] ${isFavorite ? 'text-[#ffcc00] border-[#ffcc00]' : 'text-gray-300'} hover:border-[#ffcc00] hover:text-[#ffcc00] transition-colors w-full mb-6 py-2 px-4 rounded-md font-medium`}
+                    onClick={handleFavorite}
+                  >
+                    {isFavorite ? 'В избранном' : 'Добавить в избранное'}
                   </button>
                   
                   <div className="text-sm text-gray-400 space-y-4">
@@ -324,13 +452,13 @@ const CourseDetailsPage: React.FC = () => {
                     {objectives.map((objective: any, index: number) => (
                       <div key={index} className="flex items-start">
                         <CheckCircle className="h-5 w-5 text-[#ffcc00] mr-2 flex-shrink-0 mt-0.5" />
-                        <span className="text-gray-300">{objective}</span>
+                        <span className="text-gray-300">{safeString(objective)}</span>
                       </div>
                     ))}
                   </div>
                   
                   <h3 className="text-xl font-bold mb-4 text-white">Предварительные требования</h3>
-                  <p className="mb-8 text-gray-300">{prerequisites}</p>
+                  <p className="mb-8 text-gray-300">{safeString(prerequisites)}</p>
                   
                   <h3 className="text-xl font-bold mb-4 text-white">Для кого этот курс</h3>
                   <ul className="list-disc pl-5 space-y-2 mb-8 text-gray-300">
@@ -344,7 +472,7 @@ const CourseDetailsPage: React.FC = () => {
                   <div className="flex flex-wrap gap-2">
                     {course.tags.map((tag, index) => (
                       <span key={index} className="px-3 py-1 bg-[#333333] text-gray-300 rounded-full text-sm">
-                        {tag}
+                        {safeString(tag)}
                       </span>
                     ))}
                   </div>
@@ -377,9 +505,9 @@ const CourseDetailsPage: React.FC = () => {
                               )}
                             </div>
                             <div>
-                              <h3 className="font-bold text-white">{section.title}</h3>
+                              <h3 className="font-bold text-white">{safeString(section.title)}</h3>
                               <div className="text-sm text-gray-400">
-                                {section.lessons?.length || 0} уроков • 
+                                {(section.lessons?.length || 0)} уроков •
                                 {formatTotalDuration(section.lessons?.reduce((total: any, l: any) => {
                                   return total + parseInt(l.duration?.split(' ')[0] || '0');
                                 }, 0) || 0)}
@@ -387,7 +515,7 @@ const CourseDetailsPage: React.FC = () => {
                             </div>
                           </div>
                           <div className="text-sm font-medium text-gray-400">
-                            {section.lessons?.filter((lesson: any) => lesson.completed).length || 0}/{section.lessons?.length || 0} выполнено
+                            {(section.lessons?.filter((lesson: any) => lesson.completed).length || 0)}/{(section.lessons?.length || 0)} выполнено
                           </div>
                         </div>
                         
@@ -407,11 +535,11 @@ const CourseDetailsPage: React.FC = () => {
                                     {lesson.type === 'exercise' && <BookOpen className="h-4 w-4 text-gray-400 mr-2" />}
                                     {lesson.type === 'exam' && <FileText className="h-4 w-4 text-gray-400 mr-2" />}
                                     {lesson.type === 'project' && <BookOpen className="h-4 w-4 text-gray-400 mr-2" />}
-                                    <span className="text-gray-300">{lesson.title}</span>
+                                    <span className="text-gray-300">{safeString(lesson.title)}</span>
                                   </div>
                                 </div>
                                 <div className="flex items-center">
-                                  <span className="text-sm text-gray-400 mr-3">{lesson.duration}</span>
+                                  <span className="text-sm text-gray-400 mr-3">{safeString(lesson.duration)}</span>
                                   {lesson.type === 'video' && (
                                     <button className="text-[#ffcc00] hover:text-[#ffd633]">
                                       <Play className="h-4 w-4" />
@@ -434,12 +562,12 @@ const CourseDetailsPage: React.FC = () => {
                   <h2 className="text-2xl font-bold mb-6 text-white">Ваш преподаватель</h2>
                   <div className="flex flex-col md:flex-row items-start gap-6">
                     <img 
-                      src={instructor.image} 
-                      alt={instructor.name} 
+                      src={getInstructorAvatar(instructor)} 
+                      alt={getInstructorName(instructor)} 
                       className="w-24 h-24 rounded-full object-cover"
                     />
                     <div>
-                      <h3 className="text-xl font-bold mb-1 text-white">{instructor.name}</h3>
+                      <h3 className="text-xl font-bold mb-1 text-white">{getInstructorName(instructor)}</h3>
                       <div className="flex items-center mb-4 space-x-4">
                         <div className="flex items-center">
                           <Star className="h-5 w-5 text-[#ffcc00] fill-[#ffcc00] mr-1" />
@@ -487,6 +615,32 @@ const CourseDetailsPage: React.FC = () => {
                       Написать отзыв
                     </button>
                   </div>
+                  {/* Форма отзыва для авторизованных */}
+                  {isAuthenticated && (
+                    <form onSubmit={handleReviewSubmit} className="mb-8 bg-[#222] p-4 rounded-lg border border-[#333]">
+                      <div className="mb-2 text-white font-bold">Оставить отзыв</div>
+                      <div className="flex items-center mb-2">
+                        <span className="mr-2 text-gray-300">Оценка:</span>
+                        {[1,2,3,4,5].map((star) => (
+                          <button type="button" key={star} onClick={() => setReviewForm(f => ({...f, rating: star}))} className={star <= reviewForm.rating ? 'text-[#ffcc00]' : 'text-gray-400'}>
+                            ★
+                          </button>
+                        ))}
+                      </div>
+                      <textarea
+                        className="w-full p-2 rounded bg-[#1a1a1a] text-gray-200 border border-[#333] mb-2"
+                        rows={3}
+                        placeholder="Ваш отзыв..."
+                        value={reviewForm.comment}
+                        onChange={e => setReviewForm(f => ({...f, comment: e.target.value}))}
+                        required
+                      />
+                      {reviewError && <div className="text-red-500 mb-2">{reviewError}</div>}
+                      <button type="submit" className="bg-[#ffcc00] text-black px-4 py-2 rounded font-medium" disabled={reviewLoading}>
+                        {reviewLoading ? 'Отправка...' : 'Отправить отзыв'}
+                      </button>
+                    </form>
+                  )}
                   
                   {/* Rating Distribution */}
                   <div className="bg-[#333333] p-6 rounded-lg mb-8">
@@ -520,14 +674,14 @@ const CourseDetailsPage: React.FC = () => {
                       <div key={index} className="border-b border-[#333333] pb-6 last:border-0">
                         <div className="flex items-start">
                           <img 
-                            src={review.user.image} 
-                            alt={review.user.name} 
+                            src={review.user && review.user.image ? review.user.image : ''}
+                            alt={review.user && (review.user.first_name || review.user.last_name) ? `${review.user.first_name || ''} ${review.user.last_name || ''}` : ''}
                             className="w-12 h-12 rounded-full mr-4"
                           />
                           <div className="flex-1">
                             <div className="flex justify-between items-start">
                               <div>
-                                <h4 className="font-bold text-white">{review.user.name}</h4>
+                                <h4 className="font-bold text-white">{review.user && (review.user.first_name || review.user.last_name) ? `${review.user.first_name || ''} ${review.user.last_name || ''}` : (review.user && review.user.username ? review.user.username : '')}</h4>
                                 <div className="flex items-center">
                                   <div className="flex mr-2">
                                     {[...Array(5)].map((_, i) => (
@@ -537,14 +691,14 @@ const CourseDetailsPage: React.FC = () => {
                                       />
                                     ))}
                                   </div>
-                                  <span className="text-sm text-gray-400">{review.date}</span>
+                                  <span className="text-sm text-gray-400">{safeString(review.date)}</span>
                                 </div>
                               </div>
                               <button className="text-gray-400 hover:text-[#ffcc00]">
                                 <MessageSquare className="h-5 w-5" />
                               </button>
                             </div>
-                            <p className="mt-2 text-gray-300">{review.comment}</p>
+                            <p className="mt-2 text-gray-300">{safeString(review.comment)}</p>
                             <div className="mt-3 flex items-center">
                               <button className="text-sm text-gray-400 hover:text-[#ffcc00] flex items-center mr-4">
                                 <span className="mr-1">Полезно</span>
@@ -584,9 +738,9 @@ const CourseDetailsPage: React.FC = () => {
                             <FileText className="h-6 w-6 text-[#ffcc00]" />
                           </div>
                           <div>
-                            <h4 className="font-medium text-white">{material.title}</h4>
+                            <h4 className="font-medium text-white">{safeString(material.title)}</h4>
                             <div className="text-sm text-gray-400">
-                              {material.type.toUpperCase()} • {material.size}
+                              {safeString(material.type)} • {safeString(material.size)}
                             </div>
                           </div>
                         </div>

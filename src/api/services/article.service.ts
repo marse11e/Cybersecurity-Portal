@@ -3,53 +3,52 @@ import { Article } from '../types';
 
 export const articleService = {
   async getArticles(params?: {
-    category?: string;
+    category?: string | number | { id: number };
     search?: string;
     ordering?: string;
     page?: number;
     page_size?: number;
+    categoriesList?: { id: number; slug: string; name: string }[];
   }): Promise<Article[]> {
     try {
-      // Создаем копию параметров для модификации
       const apiParams: Record<string, any> = {};
-      
-      // Копируем допустимые параметры
       if (params) {
-        if (params.category) apiParams.category = params.category;
+        if (params.category !== undefined && params.category !== null) {
+          if (typeof params.category === 'object' && 'id' in params.category) {
+            apiParams.category = params.category.id;
+          } else if (typeof params.category === 'number') {
+            apiParams.category = params.category;
+          } else if (typeof params.category === 'string' && params.categoriesList) {
+            const found = params.categoriesList.find(cat => cat.slug === params.category || cat.name === params.category);
+            if (found) apiParams.category = found.id;
+          }
+        }
         if (params.search) apiParams.search = params.search;
         if (params.ordering) apiParams.ordering = params.ordering;
         if (params.page) apiParams.page = params.page;
-        // Проверяем подходящий параметр для размера страницы
-        if (params.page_size) apiParams.limit = params.page_size; // Переименовываем в limit
+        if (params.page_size) apiParams.page_size = params.page_size;
       }
-      
       const response = await apiClient.get<Article[] | { results: Article[] }>('/articles/', { params: apiParams });
-      
-      // Обработка как пагинированных результатов, так и простых массивов
       if (response && typeof response === 'object' && 'results' in response) {
         return response.results;
       }
-      
-      // Проверка, что ответ является массивом
       if (Array.isArray(response)) {
         return response;
       }
-      
-      console.error('Неожиданный формат ответа API:', response);
       return [];
     } catch (error) {
-      console.error('Ошибка при получении статей:', error);
       return [];
     }
   },
 
   async getArticle(id: number): Promise<Article | null> {
     try {
-      const article = await apiClient.get<Article>(`/articles/${id}/`);
-      return article;
-    } catch (error) {
-      console.error(`Ошибка при получении статьи ${id}:`, error);
-      return null;
+      return await apiClient.get<Article>(`/articles/${id}/`);
+    } catch (error: any) {
+      if (error?.response?.status === 401 || error?.response?.status === 403) {
+        return null;
+      }
+      throw error;
     }
   },
   
@@ -65,21 +64,14 @@ export const articleService = {
   async getFeaturedArticles(): Promise<Article[]> {
     try {
       const response = await apiClient.get<Article[] | { results: Article[] }>('/articles/featured/');
-      
-      // Обработка как пагинированных результатов, так и простых массивов
       if (response && typeof response === 'object' && 'results' in response) {
         return response.results;
       }
-      
-      // Проверка, что ответ является массивом
       if (Array.isArray(response)) {
         return response;
       }
-      
-      console.error('Неожиданный формат ответа API для избранных статей:', response);
       return [];
     } catch (error) {
-      console.error('Ошибка при получении избранных статей:', error);
       return [];
     }
   },

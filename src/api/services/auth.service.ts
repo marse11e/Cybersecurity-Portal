@@ -10,8 +10,9 @@ export const authService = {
     username: string;
     email: string;
     password: string;
-    first_name: string;
-    last_name: string;
+    confirm_password: string;
+    first_name?: string;
+    last_name?: string;
   }): Promise<AuthResponse> {
     return apiClient.post<AuthResponse>('/auth/register/', userData);
   },
